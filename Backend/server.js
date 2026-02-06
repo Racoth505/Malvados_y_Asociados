@@ -1,5 +1,8 @@
 const express = require('express');
 const app = express();
+const cors = require('cors');
+
+app.use(cors());
 
 const auth = require('./auth');
 const gastos = require('./gastos');
@@ -15,10 +18,14 @@ app.post('/api/auth/login', auth.login);
 // Gastos
 app.post('/api/gastos', authMiddleware, gastos.crear);
 app.get('/api/gastos', authMiddleware, gastos.listar);
+app.delete('/api/gastos/:id', authMiddleware, gastos.eliminar);
+app.put('/api/gastos/:id', authMiddleware, gastos.actualizar);
 
 // Ingresos
 app.post('/api/ingresos', authMiddleware, ingresos.crear);
 app.get('/api/ingresos', authMiddleware, ingresos.listar);
+app.delete('/api/ingresos/:id', authMiddleware, ingresos.eliminar);
+app.put('/api/ingresos/:id', authMiddleware, ingresos.actualizar);
 
 // Errores
 app.use(errorHandler);
