@@ -388,3 +388,27 @@ input, select {
 .btn.ghost { background: #f1f3f5; color: #333; }
 .btn.primary { background: var(--nav); color: #fff; }
 .btn.danger { background: #ffebee; color: var(--red); }
+
+@media (max-width: 420px) {
+
+  .modal-card {
+    padding: 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-actions {
+    gap: 8px;
+  }
+
+  .modal-actions .btn {
+    padding: 10px 12px;
+    font-size: 14px;
+    min-height: 40px;
+  }
+
+  .modal-actions .btn.danger {
+    font-size: 13px;
+  }
+
+}

@@ -29,6 +29,25 @@ const state = {
 /* =========================================
    UTILIDADES
    ========================================= */
+
+function loadCatSelect() {
+  const select = $("#movCategory");
+  select.innerHTML = "";
+
+  Object.entries(state.categories).forEach(([name, color]) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    select.appendChild(option);
+  });
+
+  // Selecciona la primera por defecto
+  if (select.options.length > 0) {
+    select.value = select.options[0].value;
+    $("#movColor").value = state.categories[select.value];
+  }
+}
+
 const $ = (sel) => document.querySelector(sel);
 
 const REAL_TODAY = new Date();
@@ -40,6 +59,14 @@ function money(n) {
     currency: "USD",
     maximumFractionDigits: 0
   });
+}
+
+function formatMonthYear(date) {
+  const meses = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+  return `${meses[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function todayISO() {
@@ -152,6 +179,10 @@ function render() {
   $("#incomeAmount").textContent  = money(totalInc);
   $("#profitAmount").textContent  = money(profit);
 
+  const monthLabel = formatMonthYear(currentMonthDate);
+  $("#profitMonth").textContent = monthLabel;
+  $("#incomeMonth").textContent = monthLabel;
+
   /* ====== PROFIT RING ====== */
   const profitSvg = $("#profitRingSvg");
   drawMultiColorRing(profitSvg, expenses, totalInc, true, profit);
@@ -208,6 +239,12 @@ window.openEditModal = function(type) {
   $("#movDate").value = todayISO();
   $("#deleteBtn").style.display = "none";
 
+  if (type === "expense") {
+    loadCatSelect();                // 🔴 FALTABA
+    $("#expenseFields").style.display = "grid";
+  } else {
+    $("#expenseFields").style.display = "none";
+  }
 
   modal.showModal();
 };
