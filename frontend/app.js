@@ -72,6 +72,72 @@ function nextMonth() {
 }
 
 /* =========================================
+   LÓGICA VISUAL (GRÁFICOS Y TEXTO)
+   ========================================= */
+
+function fitText(element, text) {
+  element.textContent = text;
+  const len = text.length;
+  if(len > 11) element.style.fontSize = "20px"; 
+  else if (len > 9) element.style.fontSize = "24px"; 
+  else if (len > 7) element.style.fontSize = "28px"; 
+  else element.style.fontSize = "34px"; 
+}
+
+const CIRC = 289; 
+
+function setRingStroke(el, pct){
+  const fg = el.querySelector(".ring-fg");
+  if(!fg) return;
+  const clamped = Math.max(0, Math.min(100, pct));
+  const offset = CIRC - (CIRC * clamped / 100);
+  fg.style.strokeDasharray = String(CIRC);
+  fg.style.strokeDashoffset = String(offset);
+}
+
+function drawMultiColorRing(svgElement, dataList, totalBase, isProfitRing = false, profitAmount = 0) {
+  svgElement.innerHTML = `<circle cx="60" cy="60" r="46" fill="none" stroke="#f0f0f0" stroke-width="10" />`;
+  if (totalBase <= 0) return;
+
+  const sums = {};
+  dataList.forEach(e => {
+  const cat = e.categoria || "Otros";
+  sums[cat] = (sums[cat] || 0) + e.amount;
+  });
+
+  let currentOffset = 0;
+
+  Object.entries(sums).forEach(([cat, val]) => {
+    const pct = val / totalBase;
+    const len = CIRC * pct;
+    const color = state.categories[cat] || "#999";
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", "60"); c.setAttribute("cy", "60"); c.setAttribute("r", "46");
+    c.setAttribute("fill", "none"); c.setAttribute("stroke", color);
+    c.setAttribute("stroke-width", "10");
+    c.setAttribute("stroke-dasharray", `${len} ${CIRC}`);
+    c.setAttribute("stroke-dashoffset", -currentOffset);
+    c.setAttribute("transform", "rotate(-90 60 60)");
+    svgElement.appendChild(c);
+    currentOffset += len;
+  });
+
+  if (isProfitRing && profitAmount > 0) {
+    const profitPct = profitAmount / totalBase;
+    const profitLen = CIRC * profitPct;
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", "60"); c.setAttribute("cy", "60"); c.setAttribute("r", "46");
+    c.setAttribute("fill", "none"); c.setAttribute("stroke", "#12a64a"); 
+    c.setAttribute("stroke-width", "10");
+    c.setAttribute("stroke-dasharray", `${profitLen} ${CIRC}`);
+    c.setAttribute("stroke-dashoffset", -currentOffset);
+    c.setAttribute("transform", "rotate(-90 60 60)");
+    svgElement.appendChild(c);
+  }
+}
+
+
+/* =========================================
    RENDER PRINCIPAL
    ========================================= */
 function render() {
@@ -80,10 +146,23 @@ function render() {
 
   const totalExp = expenses.reduce((a, b) => a + b.amount, 0);
   const totalInc = incomes.reduce((a, b) => a + b.amount, 0);
+  const profit   = totalInc - totalExp;
 
   $("#expenseAmount").textContent = money(totalExp);
   $("#incomeAmount").textContent  = money(totalInc);
-  $("#profitAmount").textContent  = money(totalInc - totalExp);
+  $("#profitAmount").textContent  = money(profit);
+
+  /* ====== PROFIT RING ====== */
+  const profitSvg = $("#profitRingSvg");
+  drawMultiColorRing(profitSvg, expenses, totalInc, true, profit);
+
+  /* ====== EXPENSE RING ====== */
+  const expenseSvg = $("#expenseRingSvg");
+  drawMultiColorRing(expenseSvg, expenses, totalExp);
+
+  /* ====== INCOME RING (simple) ====== */
+  const incomeRing = document.querySelector('[data-ring="income"]');
+  setRingStroke(incomeRing, totalInc > 0 ? 100 : 0);
 
   renderLists(expenses, incomes);
 }
