@@ -18,6 +18,7 @@ if (!getToken()) logout();
 const state = {
   expenses: [],
   incomes: [],
+  expenseFilter: 'all',
   categories: {
     Comida: "#ff3b30",
     Ocio: "#ffb300",
@@ -53,6 +54,12 @@ const $ = (sel) => document.querySelector(sel);
 const REAL_TODAY = new Date();
 let currentMonthDate = new Date(REAL_TODAY.getFullYear(), REAL_TODAY.getMonth(), 1);
 
+function normalizeDateStr(dateStr) {
+  if (!dateStr) return "";
+  // Soporta 'YYYY-MM-DD' y también 'YYYY-MM-DDTHH:mm:ss...'
+  return String(dateStr).slice(0, 10);
+}
+
 function money(n) {
   return Number(n || 0).toLocaleString("en-US", {
     style: "currency",
@@ -77,7 +84,8 @@ function todayISO() {
 
 function isSameMonth(dateStr, viewDate) {
   if (!dateStr) return false;
-  const [y, m] = dateStr.split("-");
+  const d = normalizeDateStr(dateStr);
+  const [y, m] = d.split("-");
   return Number(y) === viewDate.getFullYear() &&
          Number(m) - 1 === viewDate.getMonth();
 }
@@ -93,7 +101,10 @@ function prevMonth() {
 function nextMonth() {
   const next = new Date(currentMonthDate);
   next.setMonth(next.getMonth() + 1);
-  if (next > REAL_TODAY) return;
+  // No permitir navegar a meses futuros
+  const firstOfNext = new Date(next.getFullYear(), next.getMonth(), 1);
+  const firstOfCurrentReal = new Date(REAL_TODAY.getFullYear(), REAL_TODAY.getMonth(), 1);
+  if (firstOfNext > firstOfCurrentReal) return;
   currentMonthDate = next;
   render();
 }
@@ -180,7 +191,17 @@ function render() {
   $("#profitAmount").textContent  = money(profit);
 
   const monthLabel = formatMonthYear(currentMonthDate);
-  $("#profitMonth").textContent = monthLabel;
+  // Month nav (profit)
+  const monthText = $("#profitMonthText");
+  if (monthText) monthText.textContent = monthLabel;
+  const nextArrow = $("#nextArrow");
+  const prevArrow = $("#prevArrow");
+  if (nextArrow) {
+    const firstOfNext = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1);
+    const firstOfReal = new Date(REAL_TODAY.getFullYear(), REAL_TODAY.getMonth(), 1);
+    nextArrow.classList.toggle('disabled', firstOfNext > firstOfReal);
+  }
+  if (prevArrow) prevArrow.classList.remove('disabled');
   $("#incomeMonth").textContent = monthLabel;
 
   /* ====== PROFIT RING ====== */
@@ -195,32 +216,94 @@ function render() {
   const incomeRing = document.querySelector('[data-ring="income"]');
   setRingStroke(incomeRing, totalInc > 0 ? 100 : 0);
 
+  renderLegendAndFilter(expenses);
+  renderMiniLists(expenses, incomes);
   renderLists(expenses, incomes);
+}
+
+function renderMiniLists(expenses, incomes) {
+  const sortByDateDesc = (a, b) => normalizeDateStr(b.date).localeCompare(normalizeDateStr(a.date));
+  const lastExpenses = [...expenses].sort(sortByDateDesc).slice(0, 2);
+  const lastIncomes = [...incomes].sort(sortByDateDesc).slice(0, 2);
+
+  const miniExp = $("#miniExpenseList");
+  const miniInc = $("#miniIncomeList");
+
+  if (miniExp) {
+    miniExp.innerHTML = lastExpenses.map(e => `
+      <div class="mini-item">
+        <span class="mini-concept">${e.concept}</span>
+        <span class="mini-amount text-red">-${money(e.amount)}</span>
+      </div>
+    `).join('') || '<div class="mini-item"><span class="mini-concept">Sin gastos</span></div>';
+  }
+
+  if (miniInc) {
+    miniInc.innerHTML = lastIncomes.map(i => `
+      <div class="mini-item">
+        <span class="mini-concept">${i.concept}</span>
+        <span class="mini-amount text-green">${money(i.amount)}</span>
+      </div>
+    `).join('') || '<div class="mini-item"><span class="mini-concept">Sin ingresos</span></div>';
+  }
+}
+
+function renderLegendAndFilter(expenses) {
+  const filter = $("#expenseFilter");
+  const legend = $("#expenseLegend");
+  if (!filter || !legend) return;
+
+  const catsInMonth = [...new Set(expenses.map(e => e.categoria).filter(Boolean))];
+
+  // Opciones del select
+  filter.innerHTML = `<option value="all">Todos</option>` +
+    catsInMonth.map(c => `<option value="${c}">${c}</option>`).join('');
+  if (state.expenseFilter !== 'all' && !catsInMonth.includes(state.expenseFilter)) {
+    state.expenseFilter = 'all';
+  }
+  filter.value = state.expenseFilter;
+
+  legend.innerHTML = catsInMonth.map(c => {
+    const color = state.categories[c] || '#999';
+    return `<div class="legend-item"><span class="swatch" style="background:${color}"></span>${c}</div>`;
+  }).join('') || '';
 }
 
 /* =========================================
    LISTAS
    ========================================= */
 function renderLists(expenses, incomes) {
-  $("#expenseList").innerHTML = expenses.map(e => `
-    <div class="item" onclick="editMovement('expense', ${e.id})">
-      <div>
-        <strong>${e.concept}</strong><br>
-        ${e.categoria} · ${e.date}
-      </div>
-      <div class="text-red">-${money(e.amount)}</div>
-    </div>
-  `).join("") || "Sin gastos";
+  const filteredExpenses = state.expenseFilter === 'all'
+    ? expenses
+    : expenses.filter(e => e.categoria === state.expenseFilter);
 
-  $("#incomeList").innerHTML = incomes.map(i => `
-    <div class="item" onclick="editMovement('income', ${i.id})">
-      <div>
-        <strong>${i.concept}</strong><br>
-        ${i.date}
+  $("#expenseList").innerHTML = filteredExpenses.map(e => {
+    const c = e.categoria || 'Otros';
+    const color = state.categories[c] || '#999';
+    const d = normalizeDateStr(e.date);
+    return `
+      <div class="item" onclick="editMovement('expense', ${e.id})">
+        <div class="item-left">
+          <div class="item-title">${e.concept}</div>
+          <div class="item-sub"><span class="swatch" style="background:${color}"></span>${c} · ${d}</div>
+        </div>
+        <div class="item-amt text-red">-${money(e.amount)}</div>
       </div>
+    `;
+  }).join("") || "Sin gastos";
+
+  $("#incomeList").innerHTML = incomes.map(i => {
+    const d = normalizeDateStr(i.date);
+    return `
       <div class="item" onclick="editMovement('income', ${i.id})">
-    </div>
-  `).join("") || "Sin ingresos";
+        <div class="item-left">
+          <div class="item-title">${i.concept}</div>
+          <div class="item-sub">${d}</div>
+        </div>
+        <div class="item-amt text-green">${money(i.amount)}</div>
+      </div>
+    `;
+  }).join("") || "Sin ingresos";
 }
 
 /* =========================================
@@ -246,6 +329,8 @@ window.openEditModal = function(type) {
     $("#expenseFields").style.display = "none";
   }
 
+  $("#formError").hidden = true;
+
   modal.showModal();
 };
 
@@ -259,8 +344,19 @@ window.editMovement = function(type, id) {
 
   $("#movAmount").value = item.amount;
   $("#movConcept").value = item.concept;
-  $("#movDate").value = item.date;
+  $("#movDate").value = normalizeDateStr(item.date);
   $("#deleteBtn").style.display = "inline-block";
+
+  if (type === 'expense') {
+    loadCatSelect();
+    $("#expenseFields").style.display = "grid";
+    $("#movCategory").value = item.categoria || $("#movCategory").value;
+    $("#movColor").value = state.categories[$("#movCategory").value] || '#999999';
+  } else {
+    $("#expenseFields").style.display = "none";
+  }
+
+  $("#formError").hidden = true;
 
   modal.showModal();
 };
@@ -298,7 +394,19 @@ $("#deleteBtn").onclick = async () => {
 $("#movementForm").onsubmit = async (e) => {
   e.preventDefault();
 
+  const errorEl = $("#formError");
+  errorEl.hidden = true;
+  errorEl.textContent = '';
+
   if (!$("#movAmount").value || !$("#movConcept").value) return;
+
+  // Validación front: no permitir fecha futura (mismo criterio que el backend)
+  const d = $("#movDate").value;
+  if (d && d > todayISO()) {
+    errorEl.textContent = 'Fecha no válida (no puede ser mayor a hoy).';
+    errorEl.hidden = false;
+    return;
+  }
 
   const body = {
     cantidad: Number($("#movAmount").value),
@@ -308,7 +416,10 @@ $("#movementForm").onsubmit = async (e) => {
 
   if (currentType === "expense") {
     body.categoria = $("#movCategory").value;
-    body.color = state.categories[body.categoria];
+    // Si el usuario cambió el color manualmente, lo guardamos en el estado
+    const picked = $("#movColor").value;
+    state.categories[body.categoria] = picked;
+    body.color = picked;
   }
 
   let url = `${API_URL}/${currentType === "income" ? "ingresos" : "gastos"}`;
@@ -319,7 +430,7 @@ $("#movementForm").onsubmit = async (e) => {
     method = "PUT";
   }
 
-  await fetch(url, {
+  const resp = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -327,6 +438,17 @@ $("#movementForm").onsubmit = async (e) => {
     },
     body: JSON.stringify(body)
   });
+
+  if (!resp.ok) {
+    let msg = 'Error al guardar';
+    try {
+      const data = await resp.json();
+      msg = data?.error || msg;
+    } catch {}
+    errorEl.textContent = msg;
+    errorEl.hidden = false;
+    return;
+  }
 
   modal.close();
   await loadData();
@@ -365,21 +487,63 @@ async function loadData() {
   const gastos = await gRes.json();
   const ingresos = await iRes.json();
 
-  state.expenses = gastos.map(g => ({
-  id: g.id,
-  amount: g.amount,
-  concept: g.concept,
-  date: g.date,
-  categoria: g.categoria
-}));
-  state.incomes = ingresos.map(g => ({
-  id: g.id,
-  amount: g.amount,
-  concept: g.concept,
-  date: g.date
-}));
+  state.expenses = gastos.map(g => {
+    const cat = g.category || g.categoria || 'Otros';
+    const color = g.color || state.categories[cat] || '#999999';
+    // Mantener catálogo de colores (viene del backend o de defaults)
+    state.categories[cat] = color;
+    return {
+      id: g.id,
+      amount: Number(g.amount || 0),
+      concept: g.concept,
+      date: normalizeDateStr(g.date),
+      categoria: cat,
+      color
+    };
+  });
+
+  state.incomes = ingresos.map(i => ({
+    id: i.id,
+    amount: Number(i.amount || 0),
+    concept: i.concept,
+    date: normalizeDateStr(i.date)
+  }));
 
   render();
+}
+
+// Filtro de gastos
+const expenseFilterEl = document.getElementById('expenseFilter');
+if (expenseFilterEl) {
+  expenseFilterEl.addEventListener('change', (e) => {
+    state.expenseFilter = e.target.value;
+    render();
+  });
+}
+
+// Sincronizar color con categoría en el modal
+const movCatEl = document.getElementById('movCategory');
+const movColorEl = document.getElementById('movColor');
+if (movCatEl && movColorEl) {
+  movCatEl.addEventListener('change', () => {
+    const cat = movCatEl.value;
+    movColorEl.value = state.categories[cat] || '#999999';
+  });
+  movColorEl.addEventListener('input', () => {
+    const cat = movCatEl.value;
+    if (cat) state.categories[cat] = movColorEl.value;
+  });
+}
+
+// Sync select->color en modal
+const catSel = document.getElementById('movCategory');
+if (catSel) {
+  catSel.addEventListener('change', () => {
+    const cat = catSel.value;
+    const c = state.categories[cat] || '#999999';
+    const colorInput = document.getElementById('movColor');
+    if (colorInput) colorInput.value = c;
+  });
 }
 
 loadData();

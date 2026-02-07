@@ -1,15 +1,23 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const path = require('path'); // ← corregido
 
 app.use(cors());
+app.use(express.json());
+
+// 🔥 Esto sirve tu carpeta frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 const auth = require('./auth');
 const gastos = require('./gastos');
 const ingresos = require('./ingresos');
 const { auth: authMiddleware, errorHandler } = require('./middleware');
 
-app.use(express.json());
+app.get('/', (req, res) => {
+  res.send('API FINSY funcionando 🚀');
+});
+
 
 // Auth
 app.post('/api/auth/register', auth.register);
