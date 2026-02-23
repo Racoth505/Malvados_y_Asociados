@@ -6,13 +6,18 @@ const path = require('path'); // ← corregido
 app.use(cors());
 app.use(express.json());
 
-// 🔥 Esto sirve tu carpeta frontend
+// Esto sirve tu carpeta frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const auth = require('./auth');
 const gastos = require('./gastos');
 const ingresos = require('./ingresos');
-const { auth: authMiddleware, errorHandler } = require('./middleware');
+const admin = require('./admin');
+const {
+  auth: authMiddleware,
+  requireRole,
+  errorHandler
+} = require('./middleware');
 
 app.get('/', (req, res) => {
   res.send('API FINSY funcionando 🚀');
@@ -34,6 +39,20 @@ app.post('/api/ingresos', authMiddleware, ingresos.crear);
 app.get('/api/ingresos', authMiddleware, ingresos.listar);
 app.delete('/api/ingresos/:id', authMiddleware, ingresos.eliminar);
 app.put('/api/ingresos/:id', authMiddleware, ingresos.actualizar);
+
+// Admin: usuarios comunes
+app.get('/api/admin/usuarios', authMiddleware, requireRole('admin'), admin.listarUsuariosComunes);
+app.put('/api/admin/usuarios/:id', authMiddleware, requireRole('admin'), admin.actualizarUsuarioComun);
+app.delete('/api/admin/usuarios/:id', authMiddleware, requireRole('admin'), admin.eliminarUsuarioComun);
+
+// Admin: otros administradores
+app.post('/api/admin/admins', authMiddleware, requireRole('admin'), admin.crearAdmin);
+app.get('/api/admin/admins', authMiddleware, requireRole('admin'), admin.listarAdmins);
+app.put('/api/admin/admins/:id', authMiddleware, requireRole('admin'), admin.actualizarAdmin);
+app.delete('/api/admin/admins/:id', authMiddleware, requireRole('admin'), admin.eliminarAdmin);
+
+// Admin: reporte financiero global
+app.get('/api/admin/reportes/general', authMiddleware, requireRole('admin'), admin.reporteGeneral);
 
 // Errores
 app.use(errorHandler);

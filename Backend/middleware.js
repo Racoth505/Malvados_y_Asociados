@@ -14,6 +14,18 @@ exports.auth = (req, res, next) => {
   }
 };
 
+exports.requireRole = (...roles) => (req, res, next) => {
+  if (!req.user?.role) {
+    return res.status(403).json({ error: 'Rol no autorizado' });
+  }
+
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Permisos insuficientes' });
+  }
+
+  next();
+};
+
 exports.errorHandler = (err, req, res, next) => {
   res.status(400).json({
     error: err.message || 'Error del servidor'

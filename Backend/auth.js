@@ -19,8 +19,8 @@ exports.register = async (req, res, next) => {
     const hash = await bcrypt.hash(password, 10);
 
     await db.query(
-      'INSERT INTO Usuarios (nombre, password) VALUES (?, ?)',
-      [nombre, hash]
+      'INSERT INTO Usuarios (nombre, password, rol) VALUES (?, ?, ?)',
+      [nombre, hash, 'comun']
     );
 
     res.json({ message: 'Usuario registrado' });
@@ -46,9 +46,20 @@ exports.login = async (req, res, next) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) throw new Error('Credenciales inválidas');
 
-    const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: '1d' });
+    const token = jwt.sign(
+      { id: user.id, role: user.rol, nombre: user.nombre },
+      SECRET,
+      { expiresIn: '1d' }
+    );
 
-    res.json({ token });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        rol: user.rol
+      }
+    });
   } catch (err) {
     next(err);
   }
