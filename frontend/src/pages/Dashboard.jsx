@@ -215,6 +215,8 @@ export default function Dashboard() {
   });
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingUserName, setEditingUserName] = useState("");
+  const [editingCategoryName, setEditingCategoryName] = useState(null);
+  const [editCategory, setEditCategory] = useState({ name: "", color: "#3b82f6" });
   const [selectedMonth, setSelectedMonth] = useState(today().slice(0, 7));
   const [selectedCurrency, setSelectedCurrency] = useState(BASE_CURRENCY);
   const [currencyRate, setCurrencyRate] = useState(1);
@@ -408,6 +410,24 @@ export default function Dashboard() {
     setError("");
     showAction("Categoria agregada");
   };
+
+  const removeCategory = (name) => {
+  const filtered = categories.filter((cat) => cat.name !== name);
+  setCategories(filtered);
+  showAction("Categoria eliminada");
+};
+const saveCategoryEdit = () => {
+  const updated = categories.map((cat) =>
+    cat.name === editingCategoryName
+      ? { name: editCategory.name, color: editCategory.color }
+      : cat
+  );
+
+  setCategories(updated);
+  setEditingCategoryName(null);
+  setEditCategory({ name: "", color: "#3b82f6" });
+  showAction("Categoria actualizada");
+};
 
   const addIngreso = async (event) => {
     event.preventDefault();
@@ -655,7 +675,7 @@ export default function Dashboard() {
 
       <section className="tabs-row">
         <button className={`btn ${tab === "resumen" ? "btn-primary" : "btn-soft"}`} onClick={() => setTab("resumen")}>
-          Balance
+          Agregar
         </button>
         <button className={`btn ${tab === "movimientos" ? "btn-primary" : "btn-soft"}`} onClick={() => setTab("movimientos")}>
           Movimientos
@@ -927,12 +947,58 @@ export default function Dashboard() {
           <article className="card">
             <h3>Categorias actuales</h3>
             <div className="category-list">
-              {categories.map((row) => (
-                <div className="category-item" key={row.name}>
-                  <span className="dot" style={{ background: row.color }} />
-                  <span>{row.name}</span>
-                </div>
-              ))}
+             {categories.map((row) => (
+  <div className="category-item" key={row.name}>
+    {editingCategoryName === row.name ? (
+      <>
+        <input
+          value={editCategory.name}
+          onChange={(e) =>
+            setEditCategory((prev) => ({ ...prev, name: e.target.value }))
+          }
+        />
+        <input
+          type="color"
+          value={editCategory.color}
+          onChange={(e) =>
+            setEditCategory((prev) => ({ ...prev, color: e.target.value }))
+          }
+        />
+        <button className="btn btn-success" onClick={saveCategoryEdit}>
+          Guardar
+        </button>
+        <button
+          className="btn btn-soft"
+          onClick={() => setEditingCategoryName(null)}
+        >
+          Cancelar
+        </button>
+      </>
+    ) : (
+      <>
+        <span className="dot" style={{ background: row.color }} />
+        <span>{row.name}</span>
+        <div className="row-actions">
+          <button
+            className="btn btn-edit"
+            onClick={() => {
+              setEditingCategoryName(row.name);
+              setEditCategory({ name: row.name, color: row.color });
+            }}
+          >
+            Editar
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => removeCategory(row.name)}
+          >
+            Eliminar
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+))}
             </div>
           </article>
         </section>

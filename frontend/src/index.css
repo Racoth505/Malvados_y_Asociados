@@ -254,7 +254,7 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-weight: 800;
+    font-weight: 800;
   font-size: 17px;
   line-height: 1.2;
   padding: 0 18px;
@@ -582,7 +582,7 @@ select {
   .totals-grid {
     grid-template-columns: 1fr;
   }
-
+  
   .top-left {
     width: 100%;
     justify-content: space-between;
@@ -655,4 +655,57 @@ select {
 
 }
 
+.category-scroll-list {
+  max-height: 160px;   /* altura fija */
+  overflow-y: auto;    /* activa scroll */
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px;
+  background: #fff;
+}
 
+/* scrollbar moderno */
+.category-scroll-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.category-scroll-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.category-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.category-option:hover {
+  background: #f3f4f6;
+}
+
+.category-option.active {
+  background: #dbeafe;
+}
+
+.category-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-item .row-actions {
+  margin-left: auto; /* empuja los botones al extremo derecho */
+  display: flex;
+  gap: 6px;
+}
