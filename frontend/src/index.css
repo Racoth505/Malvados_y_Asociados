@@ -305,9 +305,9 @@ body {
 }
 
 .dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
 }
 
 label span {
@@ -549,3 +549,4 @@ select {
   }
 
 }
+

@@ -524,35 +524,36 @@ export default function Dashboard() {
       </header>
 
       <main className="wrap">
-      <section className="totals-grid">
-        <RingStat
-          label="Ingresos"
-          amount={totals.totalIngresos}
-          ratio={totals.totalIngresos / totalsMax}
-          color="var(--green)"
-          delayClass="delay-1"
-        />
-        <ExpenseColorRing
-          label="Gastos"
-          amount={totals.totalGastos}
-          segments={expenseSegments}
-          delayClass="delay-2"
-        />
-        <CombinedRingStat
-          label="Ingresos y Gastos"
-          incomeAmount={totals.totalIngresos}
-          expenseAmount={totals.totalGastos}
-          delayClass="delay-3"
-        />
+<section className="totals-grid">
+  <CombinedRingStat
+    label="Ingresos y Gastos"
+    incomeAmount={totals.totalIngresos}
+    expenseAmount={totals.totalGastos}
+    delayClass="delay-1"
+  />
 
-      </section>
+  <RingStat
+    label="Ingresos"
+    amount={totals.totalIngresos}
+    ratio={totals.totalIngresos / totalsMax}
+    color="var(--green)"
+    delayClass="delay-2"
+  />
+
+  <ExpenseColorRing
+    label="Gastos"
+    amount={totals.totalGastos}
+    segments={expenseSegments}
+    delayClass="delay-3"
+  />
+</section>
 
       {actionMsg && <p className="action-toast">{actionMsg}</p>}
       {error && <p className="form-error center">{error}</p>}
 
       <section className="tabs-row">
         <button className={`btn ${tab === "resumen" ? "btn-primary" : "btn-soft"}`} onClick={() => setTab("resumen")}>
-          Resumen
+          Agregar
         </button>
         <button className={`btn ${tab === "movimientos" ? "btn-primary" : "btn-soft"}`} onClick={() => setTab("movimientos")}>
           Movimientos
@@ -625,22 +626,29 @@ export default function Dashboard() {
                 onChange={(event) => setNewGasto((prev) => ({ ...prev, fecha: event.target.value }))}
                 required
               />
-              <select
-                value={newGasto.categoria}
-                onChange={(event) => syncCategoryColor(event.target.value, setNewGasto)}
-              >
-                {categories.map((row) => (
-                  <option key={row.name} value={row.name}>
-                    {row.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="color"
-                value={newGasto.color}
-                onChange={(event) => setNewGasto((prev) => ({ ...prev, color: event.target.value }))}
-                title="Color del gasto"
-              />
+             <div className="category-scroll-list">
+  {categories.map((row) => (
+    <div
+      key={row.name}
+      className={`category-option ${
+        newGasto.categoria === row.name ? "active" : ""
+      }`}
+      onClick={() =>
+        setNewGasto((prev) => ({
+          ...prev,
+          categoria: row.name,
+          color: row.color,
+        }))
+      }
+    >
+      <span
+        className="category-color"
+        style={{ backgroundColor: row.color }}
+      />
+      {row.name}
+    </div>
+  ))}
+</div>
               <button className="btn btn-primary" type="submit">
                 Guardar gasto
               </button>
