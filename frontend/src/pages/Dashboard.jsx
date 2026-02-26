@@ -16,6 +16,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 const categoryStorageKey = (userId) => `finsy_categories_${userId || "guest"}`;
 const RING_RADIUS = 46;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const BASE_CURRENCY = "MXN";
+const POPULAR_CURRENCIES = ["MXN", "USD", "EUR", "GBP", "JPY", "CAD", "BRL", "ARS", "CHF", "CNY"];
 
 function parseUser() {
   try {
@@ -41,7 +43,19 @@ function buildArcSegments(segments) {
   });
 }
 
-function RingStat({ label, amount, ratio, color, delayClass = "" }) {
+function monthKey(dateValue) {
+  return String(dateValue || "").slice(0, 7);
+}
+
+function monthLabel(value) {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) return value || "Mes";
+  const [year, month] = value.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  const monthText = date.toLocaleDateString("es-MX", { month: "long" });
+  return `${monthText} ${year}`;
+}
+
+function RingStat({ label, amount, ratio, color, delayClass = "", formatter }) {
   const safeRatio = Math.max(0, Math.min(1, Number(ratio) || 0));
   const offset = RING_CIRCUMFERENCE * (1 - safeRatio);
 
@@ -63,13 +77,13 @@ function RingStat({ label, amount, ratio, color, delayClass = "" }) {
             }}
           />
         </svg>
-        <div className="ring-center-value">${Number(amount || 0).toFixed(2)}</div>
+        <div className="ring-center-value">{formatter ? formatter(amount) : Number(amount || 0).toFixed(2)}</div>
       </div>
     </article>
   );
 }
 
-function ExpenseColorRing({ label, amount, segments, delayClass = "" }) {
+function ExpenseColorRing({ label, amount, segments, delayClass = "", formatter }) {
   const arcs = buildArcSegments(segments);
 
   return (
@@ -94,13 +108,20 @@ function ExpenseColorRing({ label, amount, segments, delayClass = "" }) {
             />
           ))}
         </svg>
-        <div className="ring-center-value">${Number(amount || 0).toFixed(2)}</div>
+        <div className="ring-center-value">{formatter ? formatter(amount) : Number(amount || 0).toFixed(2)}</div>
       </div>
     </article>
   );
 }
 
-function CombinedRingStat({ label, incomeAmount, expenseAmount, delayClass = "" }) {
+function CombinedRingStat({
+  label,
+  incomeAmount,
+  expenseAmount,
+  delayClass = "",
+  children,
+  formatter,
+}) {
   const total = Number(incomeAmount || 0) + Number(expenseAmount || 0);
   const incomeRatio = total > 0 ? Number(incomeAmount || 0) / total : 0;
   const expenseRatio = total > 0 ? Number(expenseAmount || 0) / total : 0;
@@ -143,14 +164,13 @@ function CombinedRingStat({ label, incomeAmount, expenseAmount, delayClass = "" 
         : "expense-txt"
     }
   >
-    $
-    {(
-      Number(incomeAmount || 0) -
-      Number(expenseAmount || 0)
-    ).toFixed(2)}
+    {formatter
+      ? formatter(Number(incomeAmount || 0) - Number(expenseAmount || 0))
+      : (Number(incomeAmount || 0) - Number(expenseAmount || 0)).toFixed(2)}
   </span>
 </div>
       </div>
+      {children}
     </article>
   );
 }
@@ -195,19 +215,42 @@ export default function Dashboard() {
   });
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingUserName, setEditingUserName] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(today().slice(0, 7));
+  const [selectedCurrency, setSelectedCurrency] = useState(BASE_CURRENCY);
+  const [currencyRate, setCurrencyRate] = useState(1);
+
+  const filteredIngresos = useMemo(
+    () => ingresos.filter((row) => monthKey(row.date) === selectedMonth),
+    [ingresos, selectedMonth]
+  );
+  const filteredGastos = useMemo(
+    () => gastos.filter((row) => monthKey(row.date) === selectedMonth),
+    [gastos, selectedMonth]
+  );
+
+  const formatMoney = useCallback(
+    (value) => {
+      const converted = Number(value || 0) * Number(currencyRate || 1);
+      return converted.toLocaleString("es-MX", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    },
+    [currencyRate]
+  );
 
   const totals = useMemo(() => {
-    const totalGastos = gastos.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    const totalIngresos = ingresos.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const totalGastos = filteredGastos.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const totalIngresos = filteredIngresos.reduce((sum, row) => sum + Number(row.amount || 0), 0);
     return {
       totalGastos,
       totalIngresos,
       balance: totalIngresos - totalGastos,
     };
-  }, [gastos, ingresos]);
+  }, [filteredGastos, filteredIngresos]);
   const totalsMax = Math.max(totals.totalIngresos, totals.totalGastos, 1);
   const expenseSegments = useMemo(() => {
-    const grouped = gastos.reduce((acc, row) => {
+    const grouped = filteredGastos.reduce((acc, row) => {
       const key = `${row.category || "Sin categoria"}__${row.color || "#e53935"}`;
       acc[key] = (acc[key] || 0) + Number(row.amount || 0);
       return acc;
@@ -218,7 +261,7 @@ export default function Dashboard() {
       return { category, color, value };
     });
     return entries;
-  }, [gastos]);
+  }, [filteredGastos]);
   const adminTotalsMax = Math.max(
     Number(adminReport?.resumen?.totalIngresos || 0),
     Number(adminReport?.resumen?.totalGastos || 0),
@@ -303,6 +346,39 @@ export default function Dashboard() {
 
     boot();
   }, [loadAdminData, loadUserData]);
+
+  useEffect(() => {
+    const loadRate = async () => {
+      if (selectedCurrency === BASE_CURRENCY) {
+        setCurrencyRate(1);
+        return;
+      }
+
+      try {
+        const data = await apiFetch(
+          `/api/divisas/convertir?from=${BASE_CURRENCY}&to=${selectedCurrency}&amount=1`
+        );
+        setCurrencyRate(Number(data?.rate || 1));
+      } catch (err) {
+        setCurrencyRate(1);
+        setError(err.message);
+      }
+    };
+
+    loadRate();
+  }, [selectedCurrency]);
+
+  const goPrevMonth = () => {
+    const date = new Date(`${selectedMonth}-01T00:00:00`);
+    date.setMonth(date.getMonth() - 1);
+    setSelectedMonth(date.toISOString().slice(0, 7));
+  };
+
+  const goNextMonth = () => {
+    const date = new Date(`${selectedMonth}-01T00:00:00`);
+    date.setMonth(date.getMonth() + 1);
+    setSelectedMonth(date.toISOString().slice(0, 7));
+  };
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -514,7 +590,22 @@ export default function Dashboard() {
   return (
     <>
       <header className="topbar fade-in-up">
-        <div className="brand">FINSY</div>
+        <div className="top-left">
+          <div className="brand">FINSY</div>
+          <label className="currency-switcher">
+            <span>Divisa</span>
+            <select
+              value={selectedCurrency}
+              onChange={(event) => setSelectedCurrency(event.target.value)}
+            >
+              {POPULAR_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="top-actions">
           <span className="user">{user?.nombre || "Usuario"}</span>
           <button className="btn-logout" onClick={logout}>
@@ -525,24 +616,37 @@ export default function Dashboard() {
 
       <main className="wrap">
       <section className="totals-grid">
+        <CombinedRingStat
+          label="Balance"
+          incomeAmount={totals.totalIngresos}
+          expenseAmount={totals.totalGastos}
+          delayClass="delay-1"
+          formatter={formatMoney}
+        >
+          <div className="month-switcher">
+            <button className="btn btn-soft month-nav" onClick={goPrevMonth} type="button">
+              ◀
+            </button>
+            <div className="month-label">{monthLabel(selectedMonth)}</div>
+            <button className="btn btn-soft month-nav" onClick={goNextMonth} type="button">
+              ▶
+            </button>
+          </div>
+        </CombinedRingStat>
         <RingStat
           label="Ingresos"
           amount={totals.totalIngresos}
           ratio={totals.totalIngresos / totalsMax}
           color="var(--green)"
-          delayClass="delay-1"
+          delayClass="delay-2"
+          formatter={formatMoney}
         />
         <ExpenseColorRing
           label="Gastos"
           amount={totals.totalGastos}
           segments={expenseSegments}
-          delayClass="delay-2"
-        />
-        <CombinedRingStat
-          label="Ingresos y Gastos"
-          incomeAmount={totals.totalIngresos}
-          expenseAmount={totals.totalGastos}
           delayClass="delay-3"
+          formatter={formatMoney}
         />
 
       </section>
@@ -552,7 +656,7 @@ export default function Dashboard() {
 
       <section className="tabs-row">
         <button className={`btn ${tab === "resumen" ? "btn-primary" : "btn-soft"}`} onClick={() => setTab("resumen")}>
-          Resumen
+          Balance
         </button>
         <button className={`btn ${tab === "movimientos" ? "btn-primary" : "btn-soft"}`} onClick={() => setTab("movimientos")}>
           Movimientos
@@ -654,7 +758,7 @@ export default function Dashboard() {
           <article className="card">
             <h3>Ingresos</h3>
             <div className="rows rows-scroll">
-              {ingresos.map((row) => (
+              {filteredIngresos.map((row) => (
                 <div className="row-item" key={row.id}>
                   {editingIngresoId === row.id ? (
                     <div className="row-edit">
@@ -678,7 +782,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div>
-                      <b>${Number(row.amount).toFixed(2)}</b> - {row.concept} ({String(row.date).slice(0, 10)})
+                      <b>{formatMoney(row.amount)}</b> - {row.concept} ({String(row.date).slice(0, 10)})
                     </div>
                   )}
 
@@ -705,14 +809,16 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
-              {ingresos.length === 0 && <p className="muted">Aun no tienes ingresos cargados.</p>}
+              {filteredIngresos.length === 0 && (
+                <p className="muted">No hay ingresos para {monthLabel(selectedMonth)}.</p>
+              )}
             </div>
           </article>
 
           <article className="card">
             <h3>Gastos</h3>
             <div className="rows rows-scroll">
-              {gastos.map((row) => (
+              {filteredGastos.map((row) => (
                 <div className="row-item" key={row.id}>
                   {editingGastoId === row.id ? (
                     <div className="row-edit">
@@ -752,7 +858,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div>
-                      <b>${Number(row.amount).toFixed(2)}</b> - {row.concept}
+                      <b>{formatMoney(row.amount)}</b> - {row.concept} ({String(row.date).slice(0, 10)})
                       <span className="category-pill" style={{ backgroundColor: row.color || "#6b7280" }}>
                         {row.category}
                       </span>
@@ -782,7 +888,9 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
-              {gastos.length === 0 && <p className="muted">Aun no tienes gastos cargados.</p>}
+              {filteredGastos.length === 0 && (
+                <p className="muted">No hay gastos para {monthLabel(selectedMonth)}.</p>
+              )}
             </div>
           </article>
         </section>
@@ -849,7 +957,7 @@ export default function Dashboard() {
                     />
                   </svg>
                   <div className="ring-center-value">
-                    ${Number(adminReport?.resumen?.totalIngresos || 0).toFixed(2)}
+                    {formatMoney(adminReport?.resumen?.totalIngresos || 0)}
                   </div>
                 </div>
               </div>
@@ -876,7 +984,7 @@ export default function Dashboard() {
                     ))}
                   </svg>
                   <div className="ring-center-value">
-                    ${Number(adminReport?.resumen?.totalGastos || 0).toFixed(2)}
+                    {formatMoney(adminReport?.resumen?.totalGastos || 0)}
                   </div>
                 </div>
               </div>
@@ -927,10 +1035,10 @@ export default function Dashboard() {
                   </svg>
                   <div className="ring-center-value ring-center-multi">
                     <span className="income-txt">
-                      I ${Number(adminReport?.resumen?.totalIngresos || 0).toFixed(0)}
+                      I {formatMoney(adminReport?.resumen?.totalIngresos || 0)}
                     </span>
                     <span className="expense-txt">
-                      G ${Number(adminReport?.resumen?.totalGastos || 0).toFixed(0)}
+                      G {formatMoney(adminReport?.resumen?.totalGastos || 0)}
                     </span>
                   </div>
                 </div>
@@ -938,7 +1046,7 @@ export default function Dashboard() {
             </div>
             <p>
               Balance:{" "}
-              <b>${Number(adminReport?.resumen?.balance || 0).toFixed(2)}</b>
+              <b>{selectedCurrency} {formatMoney(adminReport?.resumen?.balance || 0)}</b>
             </p>
 
            <h4>Total de usuarios comunes</h4>

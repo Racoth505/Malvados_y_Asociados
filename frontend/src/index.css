@@ -32,11 +32,38 @@ body {
   align-items: center;
 }
 
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .brand {
   color: #fff;
   font-weight: 800;
   letter-spacing: 1px;
   font-size: 24px;
+}
+
+.currency-switcher {
+  display: grid;
+  gap: 4px;
+}
+
+.currency-switcher span {
+  color: #d9e2ea;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.currency-switcher select {
+  min-width: 92px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #4a6277;
+  background: #24394b;
+  color: #fff;
 }
 
 .top-actions {
@@ -112,6 +139,29 @@ body {
 
 .ring-card {
   text-align: center;
+}
+
+.month-switcher {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.month-label {
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.month-nav {
+  width: 40px;
+  min-width: 40px;
 }
 
 .ring-ui {
@@ -196,17 +246,23 @@ body {
 .ring-center-value {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   font-weight: 800;
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 0 14px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .ring-center-multi {
-  font-size: 14px;
-  line-height: 1.25;
-  align-content: center;
-  gap: 2px;
+  font-size: 11px;
+  line-height: 1.2;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .income-txt {
@@ -487,6 +543,17 @@ select {
 @media (max-width: 620px) {
   .totals-grid {
     grid-template-columns: 1fr;
+  }
+
+  .top-left {
+    width: 100%;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
