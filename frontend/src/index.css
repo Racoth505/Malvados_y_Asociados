@@ -421,6 +421,27 @@ select {
   font-size: 15px;
 }
 
+/* Por defecto el color ocupa todo el ancho (para AGREGAR) */
+input[type="color"] {
+  width: 100%;
+  height: 42px;
+  padding: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* En editar categoria hacemos el nombre más corto */
+.category-item input[type="text"] {
+  width: 180px;
+}
+
+/* En editar el color lo hacemos pequeño */
+.category-item input[type="color"] {
+  width: 50px;
+  height: 36px;
+  padding: 2px;
+}
+
 .btn {
   border: none;
   border-radius: 10px;
@@ -655,21 +676,51 @@ select {
 
 }
 
-.category-scroll-list {
-  max-height: 160px;   /* altura fija */
-  overflow-y: auto;    /* activa scroll */
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 8px;
-  background: #fff;
+/* Dropdown categoria estilo filtro */
+.category-dropdown {
+  position: relative;
 }
 
-/* scrollbar moderno */
-.category-scroll-list::-webkit-scrollbar {
+.category-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #fff;
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-weight: 500;
+}
+
+.category-trigger:hover {
+  background: #f8f9fa;
+}
+
+.category-menu {
+  position: absolute;
+  top: 105%;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeInUp 0.2s ease;
+}
+
+/* Scroll moderno */
+.category-menu::-webkit-scrollbar {
   width: 6px;
 }
 
-.category-scroll-list::-webkit-scrollbar-thumb {
+.category-menu::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 10px;
 }

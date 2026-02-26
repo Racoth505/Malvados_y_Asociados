@@ -117,59 +117,113 @@ function ExpenseColorRing({ label, amount, segments, delayClass = "", formatter 
 function CombinedRingStat({
   label,
   incomeAmount,
-  expenseAmount,
+  expenseSegments = [],
   delayClass = "",
   children,
   formatter,
 }) {
-  const total = Number(incomeAmount || 0) + Number(expenseAmount || 0);
-  const incomeRatio = total > 0 ? Number(incomeAmount || 0) / total : 0;
-  const expenseRatio = total > 0 ? Number(expenseAmount || 0) / total : 0;
-  const incomeLength = RING_CIRCUMFERENCE * incomeRatio;
-  const expenseLength = RING_CIRCUMFERENCE * expenseRatio;
+  const totalIncome = Number(incomeAmount || 0);
+
+  const totalExpenses = expenseSegments.reduce(
+    (sum, seg) => sum + Number(seg.value || 0),
+    0
+  );
+
+  const balance = totalIncome - totalExpenses;
+
+  const expenseArcs = (() => {
+  let cursor = 0;
+
+  return expenseSegments.map((segment) => {
+      const ratio =
+        totalIncome > 0 ? Number(segment.value || 0) / totalIncome : 0;
+
+      const length = RING_CIRCUMFERENCE * ratio;
+
+      const arc = {
+        ...segment,
+        length,
+        offset: -cursor,
+      };
+
+      cursor += length;
+      return arc;
+    });
+  })();
+
+  const hasData = totalIncome > 0;
 
   return (
     <article className={`card metric ring-card fade-in-up ${delayClass}`}>
       <p>{label}</p>
+
       <div className="ring-ui">
-        <svg viewBox="0 0 120 120" className="ring-svg">
-          <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
-          <circle
-            className="ring-segment ring-segment-income"
-            cx="60"
-            cy="60"
-            r={RING_RADIUS}
-            style={{
-              strokeDasharray: `${incomeLength} ${RING_CIRCUMFERENCE}`,
-              strokeDashoffset: 0,
-            }}
-          />
-          <circle
-            className="ring-segment ring-segment-expense"
-            cx="60"
-            cy="60"
-            r={RING_RADIUS}
-            style={{
-              strokeDasharray: `${expenseLength} ${RING_CIRCUMFERENCE}`,
-              strokeDashoffset: -incomeLength,
-            }}
-          />
+        <svg
+          viewBox="0 0 120 120"
+          className="ring-svg"
+          style={{
+            transform: "rotate(-92deg) scaleY(-1)",
+            transformOrigin: "center",
+          }}
+        >
+          {/* Fondo gris */}
+          {!hasData && (
+            <circle
+              cx="60"
+              cy="60"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="#e5e7eb"
+              strokeWidth="10"
+            />
+          )}
+
+          {/* Base verde */}
+          {hasData && (
+            <circle
+              cx="60"
+              cy="60"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="var(--green)"
+              strokeWidth="10"
+              strokeDasharray={RING_CIRCUMFERENCE}
+              strokeDashoffset="0"
+            />
+          )}
+
+          {/* Gastos antihorario real */}
+          {hasData &&
+            expenseArcs.map((segment) => (
+              <circle
+                key={`balance-${segment.category}-${segment.color}`}
+                cx="60"
+                cy="60"
+                r={RING_RADIUS}
+                fill="none"
+                stroke={segment.color}
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${segment.length} ${RING_CIRCUMFERENCE}`}
+                strokeDashoffset={segment.offset}
+              />
+            ))}
         </svg>
-       <div className="ring-center-value ring-center-multi">
-  <span className="muted">Balance</span>
-  <span
-    className={
-      Number(incomeAmount || 0) - Number(expenseAmount || 0) >= 0
-        ? "income-txt ring-balance-amount"
-        : "expense-txt ring-balance-amount"
-    }
-  >
-    {formatter
-      ? formatter(Number(incomeAmount || 0) - Number(expenseAmount || 0))
-      : (Number(incomeAmount || 0) - Number(expenseAmount || 0)).toFixed(2)}
-  </span>
-</div>
+
+        <div className="ring-center-value ring-center-multi">
+          <span className="muted">Balance</span>
+          <span
+            className={
+              balance >= 0
+                ? "income-txt ring-balance-amount"
+                : "expense-txt ring-balance-amount"
+            }
+          >
+            {formatter ? formatter(balance) : balance.toFixed(2)}
+          </span>
+        </div>
       </div>
+
       {children}
     </article>
   );
@@ -184,6 +238,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState("");
+
+  const [showCategories, setShowCategories] = useState(false);
 
   const [gastos, setGastos] = useState([]);
   const [ingresos, setIngresos] = useState([]);
@@ -252,18 +308,23 @@ export default function Dashboard() {
   }, [filteredGastos, filteredIngresos]);
   const totalsMax = Math.max(totals.totalIngresos, totals.totalGastos, 1);
   const expenseSegments = useMemo(() => {
-    const grouped = filteredGastos.reduce((acc, row) => {
-      const key = `${row.category || "Sin categoria"}__${row.color || "#e53935"}`;
-      acc[key] = (acc[key] || 0) + Number(row.amount || 0);
-      return acc;
-    }, {});
+  const grouped = filteredGastos.reduce((acc, row) => {
+    const categoryName = row.category || "Sin categoria";
 
-    const entries = Object.entries(grouped).map(([key, value]) => {
-      const [category, color] = key.split("__");
-      return { category, color, value };
-    });
-    return entries;
-  }, [filteredGastos]);
+    const categoryObj = categories.find(c => c.name === categoryName);
+    const realColor = categoryObj?.color || "#e53935";
+
+    const key = `${categoryName}__${realColor}`;
+
+    acc[key] = (acc[key] || 0) + Number(row.amount || 0);
+    return acc;
+  }, {});
+
+  return Object.entries(grouped).map(([key, value]) => {
+    const [category, color] = key.split("__");
+    return { category, color, value };
+  });
+}, [filteredGastos, categories]);
   const adminTotalsMax = Math.max(
     Number(adminReport?.resumen?.totalIngresos || 0),
     Number(adminReport?.resumen?.totalGastos || 0),
@@ -416,14 +477,27 @@ export default function Dashboard() {
   setCategories(filtered);
   showAction("Categoria eliminada");
 };
-const saveCategoryEdit = () => {
-  const updated = categories.map((cat) =>
-    cat.name === editingCategoryName
-      ? { name: editCategory.name, color: editCategory.color }
+const saveCategoryEdit = async () => {
+  const oldName = editingCategoryName;
+  const newName = editCategory.name;
+  const newColor = editCategory.color;
+
+  const updatedCategories = categories.map((cat) =>
+    cat.name === oldName
+      ? { name: newName, color: newColor }
       : cat
   );
 
-  setCategories(updated);
+  setCategories(updatedCategories);
+
+  const gastosActualizados = gastos.map((gasto) =>
+    gasto.category === oldName
+      ? { ...gasto, category: newName, color: newColor }
+      : gasto
+  );
+
+  setGastos(gastosActualizados);
+
   setEditingCategoryName(null);
   setEditCategory({ name: "", color: "#3b82f6" });
   showAction("Categoria actualizada");
@@ -639,7 +713,7 @@ const saveCategoryEdit = () => {
         <CombinedRingStat
           label="Balance"
           incomeAmount={totals.totalIngresos}
-          expenseAmount={totals.totalGastos}
+          expenseSegments={expenseSegments}
           delayClass="delay-1"
           formatter={formatMoney}
         >
@@ -748,29 +822,50 @@ const saveCategoryEdit = () => {
                 onChange={(event) => setNewGasto((prev) => ({ ...prev, fecha: event.target.value }))}
                 required
               />
-             <div className="category-scroll-list">
-  {categories.map((row) => (
-    <div
-      key={row.name}
-      className={`category-option ${
-        newGasto.categoria === row.name ? "active" : ""
-      }`}
-      onClick={() =>
-        setNewGasto((prev) => ({
-          ...prev,
-          categoria: row.name,
-          color: row.color,
-        }))
-      }
-    >
-      <span
-        className="category-color"
-        style={{ backgroundColor: row.color }}
-      />
-      {row.name}
-    </div>
-  ))}
-</div>
+              <div className="category-dropdown">
+                <button
+                  type="button"
+                  className="category-trigger"
+                  onClick={() => setShowCategories((prev) => !prev)}
+                >
+                  <span
+                    className="category-color"
+                    style={{
+                      backgroundColor:
+                        categories.find((c) => c.name === newGasto.categoria)?.color ||
+                        "#ccc",
+                    }}
+                  />
+                  {newGasto.categoria || "Categorias"}
+                </button>
+
+                {showCategories && (
+                  <div className="category-menu">
+                    {categories.map((row) => (
+                      <div
+                        key={row.name}
+                        className={`category-option ${
+                          newGasto.categoria === row.name ? "active" : ""
+                        }`}
+                        onClick={() => {
+                          setNewGasto((prev) => ({
+                            ...prev,
+                            categoria: row.name,
+                            color: row.color,
+                          }));
+                          setShowCategories(false);
+                        }}
+                      >
+                        <span
+                          className="category-color"
+                          style={{ backgroundColor: row.color }}
+                        />
+                        {row.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button className="btn btn-primary" type="submit">
                 Guardar gasto
               </button>
@@ -885,9 +980,15 @@ const saveCategoryEdit = () => {
                   ) : (
                     <div>
                       <b>{formatMoney(row.amount)}</b> - {row.concept} ({String(row.date).slice(0, 10)})
-                      <span className="category-pill" style={{ backgroundColor: row.color || "#6b7280" }}>
-                        {row.category}
-                      </span>
+                      <span
+                          className="category-pill"
+                          style={{
+                            backgroundColor:
+                              categories.find(c => c.name === row.category)?.color || "#6b7280"
+                          }}
+                        >
+                          {row.category}
+                        </span>
                     </div>
                   )}
 
@@ -1066,44 +1167,47 @@ const saveCategoryEdit = () => {
                 <div className="ring-ui ring-ui--small">
                   <svg viewBox="0 0 120 120" className="ring-svg">
                     <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
-                    <circle
-                      className="ring-segment ring-segment-income"
-                      cx="60"
-                      cy="60"
-                      r={RING_RADIUS}
-                      style={{
-                        strokeDasharray: `${
-                          RING_CIRCUMFERENCE *
-                          (Number(adminReport?.resumen?.totalIngresos || 0) /
-                            (Number(adminReport?.resumen?.totalIngresos || 0) +
-                              Number(adminReport?.resumen?.totalGastos || 0) ||
-                              1))
-                        } ${RING_CIRCUMFERENCE}`,
-                        strokeDashoffset: 0,
-                      }}
-                    />
-                    <circle
-                      className="ring-segment ring-segment-expense"
-                      cx="60"
-                      cy="60"
-                      r={RING_RADIUS}
-                      style={{
-                        strokeDasharray: `${
-                          RING_CIRCUMFERENCE *
-                          (Number(adminReport?.resumen?.totalGastos || 0) /
-                            (Number(adminReport?.resumen?.totalIngresos || 0) +
-                              Number(adminReport?.resumen?.totalGastos || 0) ||
-                              1))
-                        } ${RING_CIRCUMFERENCE}`,
-                        strokeDashoffset: `-${
-                          RING_CIRCUMFERENCE *
-                          (Number(adminReport?.resumen?.totalIngresos || 0) /
-                            (Number(adminReport?.resumen?.totalIngresos || 0) +
-                              Number(adminReport?.resumen?.totalGastos || 0) ||
-                              1))
-                        }`,
-                      }}
-                    />
+
+                    {Number(adminReport?.resumen?.totalIngresos || 0) > 0 && (
+                      <circle
+                        className="ring-segment ring-segment-income"
+                        cx="60"
+                        cy="60"
+                        r={RING_RADIUS}
+                        style={{
+                          strokeDasharray: `${
+                            RING_CIRCUMFERENCE *
+                            (Number(adminReport?.resumen?.totalIngresos || 0) /
+                              (Number(adminReport?.resumen?.totalIngresos || 0) +
+                                Number(adminReport?.resumen?.totalGastos || 0)))
+                          } ${RING_CIRCUMFERENCE}`,
+                          strokeDashoffset: 0,
+                        }}
+                      />
+                    )}
+
+                    {Number(adminReport?.resumen?.totalGastos || 0) > 0 && (
+                      <circle
+                        className="ring-segment ring-segment-expense"
+                        cx="60"
+                        cy="60"
+                        r={RING_RADIUS}
+                        style={{
+                          strokeDasharray: `${
+                            RING_CIRCUMFERENCE *
+                            (Number(adminReport?.resumen?.totalGastos || 0) /
+                              (Number(adminReport?.resumen?.totalIngresos || 0) +
+                                Number(adminReport?.resumen?.totalGastos || 0)))
+                          } ${RING_CIRCUMFERENCE}`,
+                          strokeDashoffset: `-${
+                            RING_CIRCUMFERENCE *
+                            (Number(adminReport?.resumen?.totalIngresos || 0) /
+                              (Number(adminReport?.resumen?.totalIngresos || 0) +
+                                Number(adminReport?.resumen?.totalGastos || 0)))
+                          }`,
+                        }}
+                      />
+                    )}
                   </svg>
                   <div className="ring-center-value ring-center-multi ring-admin-multi">
                     <span className="income-txt">
