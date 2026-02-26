@@ -160,8 +160,8 @@ function CombinedRingStat({
   <span
     className={
       Number(incomeAmount || 0) - Number(expenseAmount || 0) >= 0
-        ? "income-txt"
-        : "expense-txt"
+        ? "income-txt ring-balance-amount"
+        : "expense-txt ring-balance-amount"
     }
   >
     {formatter
@@ -592,8 +592,8 @@ export default function Dashboard() {
       <header className="topbar fade-in-up">
         <div className="top-left">
           <div className="brand">FINSY</div>
-          <label className="currency-switcher">
-            <span>Divisa</span>
+          <div className="currency-switcher">
+            <span className="currency-label">Divisas</span>
             <select
               value={selectedCurrency}
               onChange={(event) => setSelectedCurrency(event.target.value)}
@@ -604,7 +604,7 @@ export default function Dashboard() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
         <div className="top-actions">
           <span className="user">{user?.nombre || "Usuario"}</span>
@@ -650,30 +650,6 @@ export default function Dashboard() {
         />
 
       </section>
-<section className="totals-grid">
-  <CombinedRingStat
-    label="Ingresos y Gastos"
-    incomeAmount={totals.totalIngresos}
-    expenseAmount={totals.totalGastos}
-    delayClass="delay-1"
-  />
-
-  <RingStat
-    label="Ingresos"
-    amount={totals.totalIngresos}
-    ratio={totals.totalIngresos / totalsMax}
-    color="var(--green)"
-    delayClass="delay-2"
-  />
-
-  <ExpenseColorRing
-    label="Gastos"
-    amount={totals.totalGastos}
-    segments={expenseSegments}
-    delayClass="delay-3"
-  />
-</section>
-
       {actionMsg && <p className="action-toast">{actionMsg}</p>}
       {error && <p className="form-error center">{error}</p>}
 
@@ -986,7 +962,7 @@ export default function Dashboard() {
                       }}
                     />
                   </svg>
-                  <div className="ring-center-value">
+                  <div className="ring-center-value ring-admin-value">
                     {formatMoney(adminReport?.resumen?.totalIngresos || 0)}
                   </div>
                 </div>
@@ -1013,7 +989,7 @@ export default function Dashboard() {
                       />
                     ))}
                   </svg>
-                  <div className="ring-center-value">
+                  <div className="ring-center-value ring-admin-value">
                     {formatMoney(adminReport?.resumen?.totalGastos || 0)}
                   </div>
                 </div>
@@ -1063,7 +1039,7 @@ export default function Dashboard() {
                       }}
                     />
                   </svg>
-                  <div className="ring-center-value ring-center-multi">
+                  <div className="ring-center-value ring-center-multi ring-admin-multi">
                     <span className="income-txt">
                       I {formatMoney(adminReport?.resumen?.totalIngresos || 0)}
                     </span>

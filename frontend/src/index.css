@@ -35,7 +35,7 @@ body {
 .top-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 24px;
 }
 
 .brand {
@@ -46,15 +46,19 @@ body {
 }
 
 .currency-switcher {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 10px;
 }
 
-.currency-switcher span {
+.currency-label {
   color: #d9e2ea;
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .currency-switcher select {
@@ -251,18 +255,40 @@ body {
   justify-content: center;
   text-align: center;
   font-weight: 800;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.2;
-  padding: 0 14px;
+  padding: 0 18px;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
 .ring-center-multi {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.2;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+}
+
+.ring-balance-amount {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.ring-ui--small .ring-center-value {
+  font-size: 15px;
+  padding: 0 10px;
+}
+
+.ring-ui--small .ring-center-multi {
+  font-size: 12px;
+}
+
+.ring-admin-value {
+  font-size: 16px;
+}
+
+.ring-admin-multi {
+  font-size: 13px;
 }
 
 .income-txt {
@@ -329,10 +355,22 @@ body {
   transform: translateY(-1px);
 }
 
+.row-item > div:first-child {
+  flex: 1;
+}
+
 .row-actions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.row-actions .btn {
+  min-width: 88px;
+  text-align: center;
 }
 
 .row-edit {
