@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -23,6 +25,9 @@ app.get('/', (req, res) => {
   res.send('API FINSY funcionando 🚀');
 });
 
+const divisas = require('./divisas');
+app.get('/api/divisas/convertir', authMiddleware, divisas.convertir);
+app.get('/api/divisas/populares', authMiddleware, divisas.populares);
 
 // Auth
 app.post('/api/auth/register', auth.register);
