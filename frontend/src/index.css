@@ -368,6 +368,23 @@ body {
   width: 100%;
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.section-head h3 {
+  margin: 0;
+}
+
+.category-filter-select {
+  width: auto;
+  min-width: 210px;
+}
+
 .category-pill {
   color: #fff;
   margin-left: 8px;

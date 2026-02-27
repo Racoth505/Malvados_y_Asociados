@@ -60,6 +60,7 @@ function RingStat({ label, amount, ratio, color, delayClass = "", formatter, ani
   const length = RING_CIRCUMFERENCE * safeRatio;
   const offset = animate ? 0 : RING_CIRCUMFERENCE;
   const dasharray = animate ? `${length} ${RING_CIRCUMFERENCE}` : `0 ${RING_CIRCUMFERENCE}`;
+  const strokeLinecap = length > 0 && animate ? "round" : "butt";
 
   return (
     <article className={`card metric ring-card fade-in-up ${delayClass}`}>
@@ -76,6 +77,7 @@ function RingStat({ label, amount, ratio, color, delayClass = "", formatter, ani
               stroke: color,
               strokeDasharray: dasharray,
               strokeDashoffset: offset,
+              strokeLinecap,
             }}
           />
         </svg>
@@ -166,6 +168,7 @@ function CombinedRingStat({
   const baseDasharray = animate
     ? `${baseLength} ${RING_CIRCUMFERENCE}`
     : `0 ${RING_CIRCUMFERENCE}`;
+  const baseLinecap = baseLength > 0 && animate ? "round" : "butt";
 
   return (
     <article className={`card metric ring-card fade-in-up ${delayClass}`}>
@@ -190,6 +193,7 @@ function CombinedRingStat({
               stroke: "var(--green)",
               strokeDasharray: baseDasharray,
               strokeDashoffset: baseOffset,
+              strokeLinecap: baseLinecap,
             }}
           />
 
@@ -277,16 +281,16 @@ export default function Dashboard() {
     color: DEFAULT_CATEGORIES[0].color,
   });
   const [editingUserId, setEditingUserId] = useState(null);
-  const [editingUserName, setEditingUserName] = useState("");
   const [editingUserPassword, setEditingUserPassword] = useState("");
   const [editingAdminId, setEditingAdminId] = useState(null);
-  const [editingAdminName, setEditingAdminName] = useState("");
   const [editingAdminPassword, setEditingAdminPassword] = useState("");
   const [editingCategoryName, setEditingCategoryName] = useState(null);
   const [editCategory, setEditCategory] = useState({ name: "", color: "#3b82f6" });
   const [selectedMonth, setSelectedMonth] = useState(today().slice(0, 7));
+  const [selectedGastoCategory, setSelectedGastoCategory] = useState("todas");
   const [selectedCurrency, setSelectedCurrency] = useState(BASE_CURRENCY);
   const [currencyRate, setCurrencyRate] = useState(1);
+  const [primaryRingsReady, setPrimaryRingsReady] = useState(false);
   const [ringsReady, setRingsReady] = useState(false);
 
   const filteredIngresos = useMemo(
@@ -297,6 +301,18 @@ export default function Dashboard() {
     () => gastos.filter((row) => monthKey(row.date) === selectedMonth),
     [gastos, selectedMonth]
   );
+  const availableGastoCategories = useMemo(() => {
+    const unique = new Set(
+      filteredGastos.map((row) => String(row.category || "Sin categoria"))
+    );
+    return Array.from(unique);
+  }, [filteredGastos]);
+  const filteredGastosByCategory = useMemo(() => {
+    if (selectedGastoCategory === "todas") return filteredGastos;
+    return filteredGastos.filter(
+      (row) => String(row.category || "Sin categoria") === selectedGastoCategory
+    );
+  }, [filteredGastos, selectedGastoCategory]);
 
   const formatMoney = useCallback(
     (value) => {
@@ -414,6 +430,11 @@ export default function Dashboard() {
     adminMonthTotals.totalIngresos,
     adminMonthTotals.totalGastos,
   ]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setPrimaryRingsReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const showAction = (message) => {
     setActionMsg(message);
@@ -808,7 +829,7 @@ const saveCategoryEdit = async () => {
           expenseSegments={expenseSegments}
           delayClass="delay-1"
           formatter={formatMoney}
-          animate={ringsReady}
+          animate={primaryRingsReady}
         >
           <div className="month-switcher">
             <button className="btn btn-soft month-nav" onClick={goPrevMonth} type="button">
@@ -827,7 +848,7 @@ const saveCategoryEdit = async () => {
           color="var(--green)"
           delayClass="delay-2"
           formatter={formatMoney}
-          animate={ringsReady}
+          animate={primaryRingsReady}
         />
         <ExpenseColorRing
           label="Gastos"
@@ -1032,9 +1053,23 @@ const saveCategoryEdit = async () => {
           </article>
 
           <article className="card">
-            <h3>Gastos</h3>
+            <div className="section-head">
+              <h3>Gastos</h3>
+              <select
+                className="category-filter-select"
+                value={selectedGastoCategory}
+                onChange={(event) => setSelectedGastoCategory(event.target.value)}
+              >
+                <option value="todas">Todas las categorias</option>
+                {availableGastoCategories.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="rows rows-scroll">
-              {filteredGastos.map((row) => (
+              {filteredGastosByCategory.map((row) => (
                 <div className="row-item" key={row.id}>
                   {editingGastoId === row.id ? (
                     <div className="row-edit">
@@ -1065,12 +1100,6 @@ const saveCategoryEdit = async () => {
                           </option>
                         ))}
                       </select>
-                      <input
-                        type="color"
-                        value={editGasto.color}
-                        onChange={(event) => setEditGasto((prev) => ({ ...prev, color: event.target.value }))}
-                        title="Color del gasto"
-                      />
                     </div>
                   ) : (
                     <div>
@@ -1110,7 +1139,7 @@ const saveCategoryEdit = async () => {
                   </div>
                 </div>
               ))}
-              {filteredGastos.length === 0 && (
+              {filteredGastosByCategory.length === 0 && (
                 <p className="muted">No hay gastos para {monthLabel(selectedMonth)}.</p>
               )}
             </div>
@@ -1213,10 +1242,11 @@ const saveCategoryEdit = async () => {
                     {(() => {
                       const ratio = Number(adminMonthTotals.totalIngresos || 0) / adminTotalsMax;
                       const length = RING_CIRCUMFERENCE * Math.max(0, Math.min(1, ratio));
-                      const offset = ringsReady ? 0 : RING_CIRCUMFERENCE;
-                      const dasharray = ringsReady
+                      const offset = primaryRingsReady ? 0 : RING_CIRCUMFERENCE;
+                      const dasharray = primaryRingsReady
                         ? `${length} ${RING_CIRCUMFERENCE}`
                         : `0 ${RING_CIRCUMFERENCE}`;
+                      const strokeLinecap = primaryRingsReady && length > 0 ? "round" : "butt";
                       return (
                         <circle
                           className="ring-segment ring-segment-income"
@@ -1227,6 +1257,7 @@ const saveCategoryEdit = async () => {
                             stroke: "var(--green)",
                             strokeDasharray: dasharray,
                             strokeDashoffset: offset,
+                            strokeLinecap,
                           }}
                         />
                       );

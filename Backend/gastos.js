@@ -36,18 +36,25 @@ exports.crear = async (req, res, next) => {
    ========================= */
 exports.listar = async (req, res, next) => {
   try {
-    const [rows] = await db.query(
-      `SELECT 
-         id,
-         cantidad AS amount,
-         concepto AS concept,
-         categoria AS category,
-         color_categoria AS color,
-         fecha AS date
-       FROM Gastos
-       WHERE usuario_id = ?`,
-      [req.user.id]
-    );
+    const categoria = String(req.query.categoria || "").trim();
+
+    let sql = `SELECT 
+      id,
+      cantidad AS amount,
+      concepto AS concept,
+      categoria AS category,
+      color_categoria AS color,
+      fecha AS date
+    FROM Gastos
+    WHERE usuario_id = ?`;
+    const params = [req.user.id];
+
+    if (categoria) {
+      sql += " AND categoria = ?";
+      params.push(categoria);
+    }
+
+    const [rows] = await db.query(sql, params);
 
     res.json(rows);
   } catch (err) {
