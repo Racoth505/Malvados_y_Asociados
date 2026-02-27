@@ -760,3 +760,11 @@ input[type="color"] {
   display: flex;
   gap: 6px;
 }
+
+.password-input {
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 140px;
+}

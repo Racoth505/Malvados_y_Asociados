@@ -271,6 +271,10 @@ export default function Dashboard() {
   });
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingUserName, setEditingUserName] = useState("");
+  const [editingUserPassword, setEditingUserPassword] = useState("");
+  const [editingAdminId, setEditingAdminId] = useState(null);
+  const [editingAdminName, setEditingAdminName] = useState("");
+  const [editingAdminPassword, setEditingAdminPassword] = useState("");
   const [editingCategoryName, setEditingCategoryName] = useState(null);
   const [editCategory, setEditCategory] = useState({ name: "", color: "#3b82f6" });
   const [selectedMonth, setSelectedMonth] = useState(today().slice(0, 7));
@@ -660,14 +664,37 @@ const saveCategoryEdit = async () => {
 
   const updateCommonUser = async (id) => {
     try {
+      if (!editingUserPassword) {
+        setError("Debe ingresar una contraseña");
+        return;
+      }
       await apiFetch(`/api/admin/usuarios/${id}`, {
         method: "PUT",
-        body: JSON.stringify({ nombre: editingUserName }),
+        body: JSON.stringify({ password: editingUserPassword }),
       });
       setEditingUserId(null);
-      setEditingUserName("");
+      setEditingUserPassword("");
       await loadAdminData();
-      showAction("Usuario actualizado");
+      showAction("Contraseña actualizada");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const updateAdmin = async (id) => {
+    try {
+      if (!editingAdminPassword) {
+        setError("Debe ingresar una contraseña");
+        return;
+      }
+      await apiFetch(`/api/admin/admins/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ password: editingAdminPassword }),
+      });
+      setEditingAdminId(null);
+      setEditingAdminPassword("");
+      await loadAdminData();
+      showAction("Contraseña actualizada");
     } catch (err) {
       setError(err.message);
     }
@@ -1258,20 +1285,26 @@ const saveCategoryEdit = async () => {
             <div className="rows rows-scroll">
               {adminUsers.map((row) => (
                 <div className="row-item" key={row.id}>
-                  {editingUserId === row.id ? (
-                    <input value={editingUserName} onChange={(event) => setEditingUserName(event.target.value)} />
-                  ) : (
-                    <div>
-                      <b>{row.nombre}</b> ({String(row.created_at).slice(0, 10)})
-                    </div>
-                  )}
+                  <div>
+                    <b>{row.nombre}</b> ({String(row.created_at).slice(0, 10)})
+                  </div>
                   <div className="row-actions">
                     {editingUserId === row.id ? (
                       <>
+                        <input 
+                          placeholder="Nueva contraseña"
+                          type="password"
+                          value={editingUserPassword} 
+                          onChange={(event) => setEditingUserPassword(event.target.value)}
+                          className="password-input"
+                        />
                         <button className="btn btn-success" onClick={() => updateCommonUser(row.id)}>
                           Guardar
                         </button>
-                        <button className="btn btn-soft" onClick={() => setEditingUserId(null)}>
+                        <button className="btn btn-soft" onClick={() => {
+                          setEditingUserId(null);
+                          setEditingUserPassword("");
+                        }}>
                           Cancelar
                         </button>
                       </>
@@ -1281,10 +1314,10 @@ const saveCategoryEdit = async () => {
                           className="btn btn-edit"
                           onClick={() => {
                             setEditingUserId(row.id);
-                            setEditingUserName(row.nombre);
+                            setEditingUserPassword("");
                           }}
                         >
-                          Editar
+                          Cambiar contraseña
                         </button>
                         <button className="btn btn-danger" onClick={() => removeCommonUser(row.id)}>
                           Eliminar
@@ -1306,9 +1339,41 @@ const saveCategoryEdit = async () => {
                     <b>{row.nombre}</b>
                   </div>
                   <div className="row-actions">
-                    <button className="btn btn-danger" onClick={() => removeAdmin(row.id)}>
-                      Eliminar
-                    </button>
+                    {editingAdminId === row.id ? (
+                      <>
+                        <input 
+                          placeholder="Nueva contraseña"
+                          type="password"
+                          value={editingAdminPassword} 
+                          onChange={(event) => setEditingAdminPassword(event.target.value)}
+                          className="password-input"
+                        />
+                        <button className="btn btn-success" onClick={() => updateAdmin(row.id)}>
+                          Guardar
+                        </button>
+                        <button className="btn btn-soft" onClick={() => {
+                          setEditingAdminId(null);
+                          setEditingAdminPassword("");
+                        }}>
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="btn btn-edit"
+                          onClick={() => {
+                            setEditingAdminId(row.id);
+                            setEditingAdminPassword("");
+                          }}
+                        >
+                          Cambiar contraseña
+                        </button>
+                        <button className="btn btn-danger" onClick={() => removeAdmin(row.id)}>
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
