@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 
@@ -55,9 +55,11 @@ function monthLabel(value) {
   return `${monthText} ${year}`;
 }
 
-function RingStat({ label, amount, ratio, color, delayClass = "", formatter }) {
+function RingStat({ label, amount, ratio, color, delayClass = "", formatter, animate = true }) {
   const safeRatio = Math.max(0, Math.min(1, Number(ratio) || 0));
-  const offset = RING_CIRCUMFERENCE * (1 - safeRatio);
+  const length = RING_CIRCUMFERENCE * safeRatio;
+  const offset = animate ? 0 : RING_CIRCUMFERENCE;
+  const dasharray = animate ? `${length} ${RING_CIRCUMFERENCE}` : `0 ${RING_CIRCUMFERENCE}`;
 
   return (
     <article className={`card metric ring-card fade-in-up ${delayClass}`}>
@@ -66,13 +68,13 @@ function RingStat({ label, amount, ratio, color, delayClass = "", formatter }) {
         <svg viewBox="0 0 120 120" className="ring-svg">
           <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
           <circle
-            className="ring-fg"
+            className="ring-segment"
             cx="60"
             cy="60"
             r={RING_RADIUS}
             style={{
               stroke: color,
-              strokeDasharray: RING_CIRCUMFERENCE,
+              strokeDasharray: dasharray,
               strokeDashoffset: offset,
             }}
           />
@@ -83,7 +85,7 @@ function RingStat({ label, amount, ratio, color, delayClass = "", formatter }) {
   );
 }
 
-function ExpenseColorRing({ label, amount, segments, delayClass = "", formatter }) {
+function ExpenseColorRing({ label, amount, segments, delayClass = "", formatter, animate = true }) {
   const arcs = buildArcSegments(segments);
 
   return (
@@ -93,20 +95,26 @@ function ExpenseColorRing({ label, amount, segments, delayClass = "", formatter 
         <svg viewBox="0 0 120 120" className="ring-svg">
           <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
           {arcs.length === 0 && <circle className="ring-empty" cx="60" cy="60" r={RING_RADIUS} />}
-          {arcs.map((segment) => (
-            <circle
-              key={`${segment.category}-${segment.color}`}
-              className="ring-segment"
-              cx="60"
-              cy="60"
-              r={RING_RADIUS}
-              style={{
-                stroke: segment.color,
-                strokeDasharray: `${segment.length} ${RING_CIRCUMFERENCE}`,
-                strokeDashoffset: segment.offset,
-              }}
-            />
-          ))}
+          {arcs.map((segment) => {
+            const offset = animate ? segment.offset : RING_CIRCUMFERENCE;
+            const dasharray = animate
+              ? `${segment.length} ${RING_CIRCUMFERENCE}`
+              : `0 ${RING_CIRCUMFERENCE}`;
+            return (
+              <circle
+                key={`${segment.category}-${segment.color}`}
+                className="ring-segment"
+                cx="60"
+                cy="60"
+                r={RING_RADIUS}
+                style={{
+                  stroke: segment.color,
+                  strokeDasharray: dasharray,
+                  strokeDashoffset: offset,
+                }}
+              />
+            );
+          })}
         </svg>
         <div className="ring-center-value">{formatter ? formatter(amount) : Number(amount || 0).toFixed(2)}</div>
       </div>
@@ -121,6 +129,7 @@ function CombinedRingStat({
   delayClass = "",
   children,
   formatter,
+  animate = true,
 }) {
   const totalIncome = Number(incomeAmount || 0);
 
@@ -152,6 +161,11 @@ function CombinedRingStat({
   })();
 
   const hasData = totalIncome > 0;
+  const baseLength = hasData ? RING_CIRCUMFERENCE : 0;
+  const baseOffset = animate ? 0 : RING_CIRCUMFERENCE;
+  const baseDasharray = animate
+    ? `${baseLength} ${RING_CIRCUMFERENCE}`
+    : `0 ${RING_CIRCUMFERENCE}`;
 
   return (
     <article className={`card metric ring-card fade-in-up ${delayClass}`}>
@@ -162,52 +176,45 @@ function CombinedRingStat({
           viewBox="0 0 120 120"
           className="ring-svg"
           style={{
-            transform: "rotate(-92deg) scaleY(-1)",
+            transform: "scaleX(1) rotate(-90deg)",
             transformOrigin: "center",
           }}
         >
-          {/* Fondo gris */}
-          {!hasData && (
-            <circle
-              cx="60"
-              cy="60"
-              r={RING_RADIUS}
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="10"
-            />
-          )}
-
-          {/* Base verde */}
-          {hasData && (
-            <circle
-              cx="60"
-              cy="60"
-              r={RING_RADIUS}
-              fill="none"
-              stroke="var(--green)"
-              strokeWidth="10"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset="0"
-            />
-          )}
+          <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
+          <circle
+            className="ring-segment ring-segment-income"
+            cx="60"
+            cy="60"
+            r={RING_RADIUS}
+            style={{
+              stroke: "var(--green)",
+              strokeDasharray: baseDasharray,
+              strokeDashoffset: baseOffset,
+            }}
+          />
 
           {/* Gastos antihorario real */}
           {hasData &&
-            expenseArcs.map((segment) => (
-              <circle
-                key={`balance-${segment.category}-${segment.color}`}
-                cx="60"
-                cy="60"
-                r={RING_RADIUS}
-                fill="none"
-                stroke={segment.color}
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeDasharray={`${segment.length} ${RING_CIRCUMFERENCE}`}
-                strokeDashoffset={segment.offset}
-              />
-            ))}
+            expenseArcs.map((segment) => {
+              const offset = animate ? segment.offset : RING_CIRCUMFERENCE;
+              const dasharray = animate
+                ? `${segment.length} ${RING_CIRCUMFERENCE}`
+                : `0 ${RING_CIRCUMFERENCE}`;
+              return (
+                <circle
+                  key={`balance-${segment.category}-${segment.color}`}
+                  className="ring-segment"
+                  cx="60"
+                  cy="60"
+                  r={RING_RADIUS}
+                  style={{
+                    stroke: segment.color,
+                    strokeDasharray: dasharray,
+                    strokeDashoffset: offset,
+                  }}
+                />
+              );
+            })}
         </svg>
 
         <div className="ring-center-value ring-center-multi">
@@ -280,6 +287,7 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(today().slice(0, 7));
   const [selectedCurrency, setSelectedCurrency] = useState(BASE_CURRENCY);
   const [currencyRate, setCurrencyRate] = useState(1);
+  const [ringsReady, setRingsReady] = useState(false);
 
   const filteredIngresos = useMemo(
     () => ingresos.filter((row) => monthKey(row.date) === selectedMonth),
@@ -329,13 +337,38 @@ export default function Dashboard() {
     return { category, color, value };
   });
 }, [filteredGastos, categories]);
+  const adminMovimientosMes = useMemo(
+    () =>
+      (adminReport?.movimientos || []).filter(
+        (item) => monthKey(item.fecha) === selectedMonth
+      ),
+    [adminReport, selectedMonth]
+  );
+
+  const adminMonthTotals = useMemo(() => {
+    let totalIngresos = 0;
+    let totalGastos = 0;
+
+    adminMovimientosMes.forEach((item) => {
+      const amount = Number(item.cantidad || 0);
+      if (item.tipo === "ingreso") totalIngresos += amount;
+      if (item.tipo === "gasto") totalGastos += amount;
+    });
+
+    return {
+      totalIngresos,
+      totalGastos,
+      balance: totalIngresos - totalGastos,
+    };
+  }, [adminMovimientosMes]);
+
   const adminTotalsMax = Math.max(
-    Number(adminReport?.resumen?.totalIngresos || 0),
-    Number(adminReport?.resumen?.totalGastos || 0),
+    Number(adminMonthTotals.totalIngresos || 0),
+    Number(adminMonthTotals.totalGastos || 0),
     1
   );
   const adminExpenseSegments = useMemo(() => {
-    const movimientos = (adminReport?.movimientos || []).filter((item) => item.tipo === "gasto");
+    const movimientos = adminMovimientosMes.filter((item) => item.tipo === "gasto");
     const grouped = movimientos.reduce((acc, row) => {
       const key = `${row.categoria || "Sin categoria"}__${row.color_categoria || "#e53935"}`;
       acc[key] = (acc[key] || 0) + Number(row.cantidad || 0);
@@ -347,8 +380,40 @@ export default function Dashboard() {
       return { category, color, value };
     });
     return entries;
-  }, [adminReport]);
+  }, [adminMovimientosMes]);
   const adminExpenseArcs = useMemo(() => buildArcSegments(adminExpenseSegments), [adminExpenseSegments]);
+  const adminMixedExpenseArcs = useMemo(() => {
+    const totalIngresos = Number(adminMonthTotals.totalIngresos || 0);
+    const totalGastos = Number(adminMonthTotals.totalGastos || 0);
+    const total = totalIngresos + totalGastos;
+    if (total <= 0) return [];
+
+    const incomeLength = (RING_CIRCUMFERENCE * totalIngresos) / total;
+    let cursor = 0;
+
+    return adminExpenseSegments.map((segment) => {
+      const length = (RING_CIRCUMFERENCE * Number(segment.value || 0)) / total;
+      const arc = {
+        ...segment,
+        length,
+        offset: -(incomeLength + cursor),
+      };
+      cursor += length;
+      return arc;
+    });
+  }, [adminExpenseSegments, adminMonthTotals]);
+
+  useLayoutEffect(() => {
+    setRingsReady(false);
+    const frame = window.requestAnimationFrame(() => setRingsReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    selectedMonth,
+    totals.totalIngresos,
+    totals.totalGastos,
+    adminMonthTotals.totalIngresos,
+    adminMonthTotals.totalGastos,
+  ]);
 
   const showAction = (message) => {
     setActionMsg(message);
@@ -743,6 +808,7 @@ const saveCategoryEdit = async () => {
           expenseSegments={expenseSegments}
           delayClass="delay-1"
           formatter={formatMoney}
+          animate={ringsReady}
         >
           <div className="month-switcher">
             <button className="btn btn-soft month-nav" onClick={goPrevMonth} type="button">
@@ -761,6 +827,7 @@ const saveCategoryEdit = async () => {
           color="var(--green)"
           delayClass="delay-2"
           formatter={formatMoney}
+          animate={ringsReady}
         />
         <ExpenseColorRing
           label="Gastos"
@@ -768,6 +835,7 @@ const saveCategoryEdit = async () => {
           segments={expenseSegments}
           delayClass="delay-3"
           formatter={formatMoney}
+          animate={ringsReady}
         />
 
       </section>
@@ -1142,22 +1210,30 @@ const saveCategoryEdit = async () => {
                 <div className="ring-ui ring-ui--small">
                   <svg viewBox="0 0 120 120" className="ring-svg">
                     <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
-                    <circle
-                      className="ring-fg"
-                      cx="60"
-                      cy="60"
-                      r={RING_RADIUS}
-                      style={{
-                        stroke: "var(--green)",
-                        strokeDasharray: RING_CIRCUMFERENCE,
-                        strokeDashoffset:
-                          RING_CIRCUMFERENCE *
-                          (1 - Number(adminReport?.resumen?.totalIngresos || 0) / adminTotalsMax),
-                      }}
-                    />
+                    {(() => {
+                      const ratio = Number(adminMonthTotals.totalIngresos || 0) / adminTotalsMax;
+                      const length = RING_CIRCUMFERENCE * Math.max(0, Math.min(1, ratio));
+                      const offset = ringsReady ? 0 : RING_CIRCUMFERENCE;
+                      const dasharray = ringsReady
+                        ? `${length} ${RING_CIRCUMFERENCE}`
+                        : `0 ${RING_CIRCUMFERENCE}`;
+                      return (
+                        <circle
+                          className="ring-segment ring-segment-income"
+                          cx="60"
+                          cy="60"
+                          r={RING_RADIUS}
+                          style={{
+                            stroke: "var(--green)",
+                            strokeDasharray: dasharray,
+                            strokeDashoffset: offset,
+                          }}
+                        />
+                      );
+                    })()}
                   </svg>
                   <div className="ring-center-value ring-admin-value">
-                    {formatMoney(adminReport?.resumen?.totalIngresos || 0)}
+                    {formatMoney(adminMonthTotals.totalIngresos || 0)}
                   </div>
                 </div>
               </div>
@@ -1168,23 +1244,29 @@ const saveCategoryEdit = async () => {
                   <svg viewBox="0 0 120 120" className="ring-svg">
                     <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
                     {adminExpenseArcs.length === 0 && <circle className="ring-empty" cx="60" cy="60" r={RING_RADIUS} />}
-                    {adminExpenseArcs.map((segment) => (
-                      <circle
-                        key={`admin-${segment.category}-${segment.color}`}
-                        className="ring-segment"
-                        cx="60"
-                        cy="60"
-                        r={RING_RADIUS}
-                        style={{
-                          stroke: segment.color,
-                          strokeDasharray: `${segment.length} ${RING_CIRCUMFERENCE}`,
-                          strokeDashoffset: segment.offset,
-                        }}
-                      />
-                    ))}
+                    {adminExpenseArcs.map((segment) => {
+                      const offset = ringsReady ? segment.offset : RING_CIRCUMFERENCE;
+                      const dasharray = ringsReady
+                        ? `${segment.length} ${RING_CIRCUMFERENCE}`
+                        : `0 ${RING_CIRCUMFERENCE}`;
+                      return (
+                        <circle
+                          key={`admin-${segment.category}-${segment.color}`}
+                          className="ring-segment"
+                          cx="60"
+                          cy="60"
+                          r={RING_RADIUS}
+                          style={{
+                            stroke: segment.color,
+                            strokeDasharray: dasharray,
+                            strokeDashoffset: offset,
+                          }}
+                        />
+                      );
+                    })}
                   </svg>
                   <div className="ring-center-value ring-admin-value">
-                    {formatMoney(adminReport?.resumen?.totalGastos || 0)}
+                    {formatMoney(adminMonthTotals.totalGastos || 0)}
                   </div>
                 </div>
               </div>
@@ -1195,53 +1277,55 @@ const saveCategoryEdit = async () => {
                   <svg viewBox="0 0 120 120" className="ring-svg">
                     <circle className="ring-bg" cx="60" cy="60" r={RING_RADIUS} />
 
-                    {Number(adminReport?.resumen?.totalIngresos || 0) > 0 && (
-                      <circle
-                        className="ring-segment ring-segment-income"
-                        cx="60"
-                        cy="60"
-                        r={RING_RADIUS}
-                        style={{
-                          strokeDasharray: `${
-                            RING_CIRCUMFERENCE *
-                            (Number(adminReport?.resumen?.totalIngresos || 0) /
-                              (Number(adminReport?.resumen?.totalIngresos || 0) +
-                                Number(adminReport?.resumen?.totalGastos || 0)))
-                          } ${RING_CIRCUMFERENCE}`,
-                          strokeDashoffset: 0,
-                        }}
-                      />
-                    )}
+                    {Number(adminMonthTotals.totalIngresos || 0) > 0 && (() => {
+                      const totalIngresos = Number(adminMonthTotals.totalIngresos || 0);
+                      const totalGastos = Number(adminMonthTotals.totalGastos || 0);
+                      const total = totalIngresos + totalGastos;
+                      const incomeLength = total > 0 ? (RING_CIRCUMFERENCE * totalIngresos) / total : 0;
+                      const offset = ringsReady ? 0 : RING_CIRCUMFERENCE;
+                      return (
+                        <circle
+                          className="ring-segment ring-segment-income"
+                          cx="60"
+                          cy="60"
+                          r={RING_RADIUS}
+                          style={{
+                            strokeDasharray: `${
+                              ringsReady ? incomeLength : 0
+                            } ${RING_CIRCUMFERENCE}`,
+                            strokeDashoffset: offset,
+                          }}
+                        />
+                      );
+                    })()}
 
-                    {Number(adminReport?.resumen?.totalGastos || 0) > 0 && (
-                      <circle
-                        className="ring-segment ring-segment-expense"
-                        cx="60"
-                        cy="60"
-                        r={RING_RADIUS}
-                        style={{
-                          strokeDasharray: `${
-                            RING_CIRCUMFERENCE *
-                            (Number(adminReport?.resumen?.totalGastos || 0) /
-                              (Number(adminReport?.resumen?.totalIngresos || 0) +
-                                Number(adminReport?.resumen?.totalGastos || 0)))
-                          } ${RING_CIRCUMFERENCE}`,
-                          strokeDashoffset: `-${
-                            RING_CIRCUMFERENCE *
-                            (Number(adminReport?.resumen?.totalIngresos || 0) /
-                              (Number(adminReport?.resumen?.totalIngresos || 0) +
-                                Number(adminReport?.resumen?.totalGastos || 0)))
-                          }`,
-                        }}
-                      />
-                    )}
+                    {adminMixedExpenseArcs.map((segment) => {
+                      const offset = ringsReady ? segment.offset : RING_CIRCUMFERENCE;
+                      const dasharray = ringsReady
+                        ? `${segment.length} ${RING_CIRCUMFERENCE}`
+                        : `0 ${RING_CIRCUMFERENCE}`;
+                      return (
+                        <circle
+                          key={`admin-mixto-${segment.category}-${segment.color}`}
+                          className="ring-segment"
+                          cx="60"
+                          cy="60"
+                          r={RING_RADIUS}
+                          style={{
+                            stroke: segment.color,
+                            strokeDasharray: dasharray,
+                            strokeDashoffset: offset,
+                          }}
+                        />
+                      );
+                    })}
                   </svg>
                   <div className="ring-center-value ring-center-multi ring-admin-multi">
                     <span className="income-txt">
-                      I {formatMoney(adminReport?.resumen?.totalIngresos || 0)}
+                      I {formatMoney(adminMonthTotals.totalIngresos || 0)}
                     </span>
                     <span className="expense-txt">
-                      G {formatMoney(adminReport?.resumen?.totalGastos || 0)}
+                      G {formatMoney(adminMonthTotals.totalGastos || 0)}
                     </span>
                   </div>
                 </div>
@@ -1249,12 +1333,16 @@ const saveCategoryEdit = async () => {
             </div>
             <p>
               Balance:{" "}
-              <b>{selectedCurrency} {formatMoney(adminReport?.resumen?.balance || 0)}</b>
+              <b>{selectedCurrency} {formatMoney(adminMonthTotals.balance || 0)}</b>
             </p>
 
-           <h4>Total de usuarios comunes</h4>
+            <h4>Total de usuarios comunes</h4>
       <div className="admin-total-box">
-        {adminUsers.length}
+        {Number(adminReport?.resumen?.numeroUsuariosComunes || 0)}
+      </div>
+      <h4>Total de administradores</h4>
+      <div className="admin-total-box">
+        {Number(adminReport?.resumen?.numeroAdministradores || 0)}
       </div>
           </article>
 

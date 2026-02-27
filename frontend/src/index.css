@@ -219,13 +219,6 @@ body {
   stroke-width: 10;
 }
 
-.ring-fg {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.7s ease;
-}
-
 .ring-empty {
   fill: none;
   stroke: #dfe3e8;
@@ -236,15 +229,11 @@ body {
   fill: none;
   stroke-width: 10;
   stroke-linecap: round;
-  transition: stroke-dasharray 0.7s ease, stroke-dashoffset 0.7s ease;
+  transition: stroke-dashoffset 0.7s ease, stroke-dasharray 0.7s ease;
 }
 
 .ring-segment-income {
   stroke: var(--green);
-}
-
-.ring-segment-expense {
-  stroke: var(--red);
 }
 
 .ring-center-value {
@@ -254,7 +243,7 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-    font-weight: 800;
+  font-weight: 800;
   font-size: 17px;
   line-height: 1.2;
   padding: 0 18px;

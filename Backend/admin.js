@@ -210,19 +210,48 @@ exports.reporteGeneral = async (req, res, next) => {
       `SELECT
          COALESCE((SELECT SUM(i.cantidad)
                    FROM Ingresos i
-                   INNER JOIN Usuarios u ON u.id = i.usuario_id
-                   WHERE u.rol = ?), 0) AS total_ingresos,
+                   INNER JOIN Usuarios u ON u.id = i.usuario_id), 0) AS total_ingresos,
          COALESCE((SELECT SUM(g.cantidad)
                    FROM Gastos g
-                   INNER JOIN Usuarios u ON u.id = g.usuario_id
-                   WHERE u.rol = ?), 0) AS total_gastos,
+                   INNER JOIN Usuarios u ON u.id = g.usuario_id), 0) AS total_gastos,
          (SELECT COUNT(*)
           FROM Usuarios u
           WHERE u.rol = ?) AS numero_usuarios_comunes,
          (SELECT COUNT(*)
           FROM Usuarios u
           WHERE u.rol = ?) AS numero_administradores`,
-      [COMMON_ROLE, COMMON_ROLE, COMMON_ROLE, ADMIN_ROLE]
+      [COMMON_ROLE, ADMIN_ROLE]
+    );
+
+    const [movimientos] = await db.query(
+      `SELECT
+         'ingreso' AS tipo,
+         i.id AS movimiento_id,
+         i.usuario_id,
+         u.nombre AS usuario_nombre,
+         u.rol AS usuario_rol,
+         i.cantidad,
+         i.concepto,
+         NULL AS categoria,
+         NULL AS color_categoria,
+         i.fecha
+       FROM Ingresos i
+       INNER JOIN Usuarios u ON u.id = i.usuario_id
+       UNION ALL
+       SELECT
+         'gasto' AS tipo,
+         g.id AS movimiento_id,
+         g.usuario_id,
+         u.nombre AS usuario_nombre,
+         u.rol AS usuario_rol,
+         g.cantidad,
+         g.concepto,
+         g.categoria,
+         g.color_categoria,
+         g.fecha
+       FROM Gastos g
+       INNER JOIN Usuarios u ON u.id = g.usuario_id
+       ORDER BY fecha DESC, movimiento_id DESC`
     );
 
     const resumen = resumenRows[0];
@@ -236,7 +265,8 @@ exports.reporteGeneral = async (req, res, next) => {
         balance,
         numeroUsuariosComunes: Number(resumen.numero_usuarios_comunes || 0),
         numeroAdministradores: Number(resumen.numero_administradores || 0)
-      }
+      },
+      movimientos
     });
   } catch (err) {
     next(err);
