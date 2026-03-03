@@ -13,7 +13,6 @@ const DEFAULT_CATEGORIES = [
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const categoryStorageKey = (userId) => `finsy_categories_${userId || "guest"}`;
 const RING_RADIUS = 46;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const BASE_CURRENCY = "MXN";
@@ -284,7 +283,7 @@ export default function Dashboard() {
   const [editingUserPassword, setEditingUserPassword] = useState("");
   const [editingAdminId, setEditingAdminId] = useState(null);
   const [editingAdminPassword, setEditingAdminPassword] = useState("");
-  const [editingCategoryName, setEditingCategoryName] = useState(null);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editCategory, setEditCategory] = useState({ name: "", color: "#3b82f6" });
   const [selectedMonth, setSelectedMonth] = useState(today().slice(0, 7));
   const [selectedGastoCategory, setSelectedGastoCategory] = useState("todas");
@@ -450,6 +449,20 @@ export default function Dashboard() {
     return { gData, iData };
   }, []);
 
+  const loadCategories = useCallback(async () => {
+    const data = await apiFetch("/api/categorias");
+    const list = Array.isArray(data) ? data : [];
+    setCategories(list);
+    if (list.length > 0) {
+      setNewGasto((prev) => {
+        const found = list.find((row) => row.name === prev.categoria);
+        if (found) return { ...prev, color: found.color };
+        return { ...prev, categoria: list[0].name, color: list[0].color };
+      });
+    }
+    return list;
+  }, []);
+
   const loadAdminData = useCallback(async () => {
     if (!isAdmin) return { reportData: null };
 
@@ -466,34 +479,15 @@ export default function Dashboard() {
   }, [isAdmin]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(categoryStorageKey(user.id));
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length) {
-          setCategories(parsed);
-          setNewGasto((prev) => ({
-            ...prev,
-            categoria: parsed[0].name,
-            color: parsed[0].color,
-          }));
-        }
-      } catch {
-        setCategories(DEFAULT_CATEGORIES);
-      }
-    }
-  }, [user.id]);
-
-  useEffect(() => {
-    localStorage.setItem(categoryStorageKey(user.id), JSON.stringify(categories));
-  }, [categories, user.id]);
-
-  useEffect(() => {
     const boot = async () => {
       try {
         setLoading(true);
         setError("");
-        const [userData, adminData] = await Promise.all([loadUserData(), loadAdminData()]);
+        const [userData, adminData] = await Promise.all([
+          loadUserData(),
+          loadAdminData(),
+          loadCategories(),
+        ]);
 
         const months = [
           ...(userData?.gData || []).map((row) => monthKey(row.date)),
@@ -515,7 +509,7 @@ export default function Dashboard() {
     };
 
     boot();
-  }, [loadAdminData, loadUserData]);
+  }, [loadAdminData, loadCategories, loadUserData]);
 
   useEffect(() => {
     const loadRate = async () => {
@@ -563,52 +557,54 @@ export default function Dashboard() {
     }
   };
 
-  const addCategory = (event) => {
+  const addCategory = async (event) => {
     event.preventDefault();
-    const name = newCategory.name.trim();
-    if (name.length < 3) return setError("La categoria debe tener al menos 3 caracteres");
-
-    if (categories.some((row) => row.name.toLowerCase() === name.toLowerCase())) {
-      return setError("La categoria ya existe");
+    try {
+      const name = newCategory.name.trim();
+      if (name.length < 3) return setError("La categoria debe tener al menos 3 caracteres");
+      await apiFetch("/api/categorias", {
+        method: "POST",
+        body: JSON.stringify({ nombre: name, color: newCategory.color }),
+      });
+      setNewCategory({ name: "", color: "#3b82f6" });
+      await loadCategories();
+      setError("");
+      showAction("Categoria agregada");
+    } catch (err) {
+      setError(err.message);
     }
-
-    const next = [...categories, { name, color: newCategory.color }];
-    setCategories(next);
-    setNewCategory({ name: "", color: "#3b82f6" });
-    setError("");
-    showAction("Categoria agregada");
   };
 
-  const removeCategory = (name) => {
-  const filtered = categories.filter((cat) => cat.name !== name);
-  setCategories(filtered);
-  showAction("Categoria eliminada");
-};
-const saveCategoryEdit = async () => {
-  const oldName = editingCategoryName;
-  const newName = editCategory.name;
-  const newColor = editCategory.color;
+  const removeCategory = async (row) => {
+    try {
+      await apiFetch(`/api/categorias/${row.id}`, { method: "DELETE" });
+      await loadCategories();
+      showAction("Categoria eliminada");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-  const updatedCategories = categories.map((cat) =>
-    cat.name === oldName
-      ? { name: newName, color: newColor }
-      : cat
-  );
-
-  setCategories(updatedCategories);
-
-  const gastosActualizados = gastos.map((gasto) =>
-    gasto.category === oldName
-      ? { ...gasto, category: newName, color: newColor }
-      : gasto
-  );
-
-  setGastos(gastosActualizados);
-
-  setEditingCategoryName(null);
-  setEditCategory({ name: "", color: "#3b82f6" });
-  showAction("Categoria actualizada");
-};
+  const saveCategoryEdit = async () => {
+    try {
+      if (!editingCategoryId) return;
+      const name = editCategory.name.trim();
+      if (name.length < 3) return setError("La categoria debe tener al menos 3 caracteres");
+      await apiFetch(`/api/categorias/${editingCategoryId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          nombre: name,
+          color: editCategory.color,
+        }),
+      });
+      setEditingCategoryId(null);
+      setEditCategory({ name: "", color: "#3b82f6" });
+      await Promise.all([loadCategories(), loadUserData()]);
+      showAction("Categoria actualizada");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const addIngreso = async (event) => {
     event.preventDefault();
@@ -1190,8 +1186,8 @@ const saveCategoryEdit = async () => {
             <h3>Categorias actuales</h3>
             <div className="category-list">
              {categories.map((row) => (
-  <div className="category-item" key={row.name}>
-    {editingCategoryName === row.name ? (
+  <div className="category-item" key={row.id}>
+    {editingCategoryId === row.id ? (
       <>
         <input
           value={editCategory.name}
@@ -1211,7 +1207,7 @@ const saveCategoryEdit = async () => {
         </button>
         <button
           className="btn btn-soft"
-          onClick={() => setEditingCategoryName(null)}
+          onClick={() => setEditingCategoryId(null)}
         >
           Cancelar
         </button>
@@ -1224,7 +1220,7 @@ const saveCategoryEdit = async () => {
           <button
             className="btn btn-edit"
             onClick={() => {
-              setEditingCategoryName(row.name);
+              setEditingCategoryId(row.id);
               setEditCategory({ name: row.name, color: row.color });
             }}
           >
@@ -1232,7 +1228,7 @@ const saveCategoryEdit = async () => {
           </button>
           <button
             className="btn btn-danger"
-            onClick={() => removeCategory(row.name)}
+            onClick={() => removeCategory(row)}
           >
             Eliminar
           </button>

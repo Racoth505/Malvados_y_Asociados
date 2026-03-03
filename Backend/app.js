@@ -8,6 +8,7 @@ const fs = require("fs");
 const auth = require("./auth");
 const gastos = require("./gastos");
 const ingresos = require("./ingresos");
+const categorias = require("./categorias");
 const admin = require("./admin");
 const divisas = require("./divisas");
 const { auth: authMiddleware, requireRole, errorHandler } = require("./middleware");
@@ -40,6 +41,12 @@ app.post("/api/ingresos", authMiddleware, ingresos.crear);
 app.get("/api/ingresos", authMiddleware, ingresos.listar);
 app.delete("/api/ingresos/:id", authMiddleware, ingresos.eliminar);
 app.put("/api/ingresos/:id", authMiddleware, ingresos.actualizar);
+
+// Categorias
+app.post("/api/categorias", authMiddleware, categorias.crear);
+app.get("/api/categorias", authMiddleware, categorias.listar);
+app.put("/api/categorias/:id", authMiddleware, categorias.actualizar);
+app.delete("/api/categorias/:id", authMiddleware, categorias.eliminar);
 
 // Admin: usuarios comunes
 app.get("/api/admin/usuarios", authMiddleware, requireRole("admin"), admin.listarUsuariosComunes);
