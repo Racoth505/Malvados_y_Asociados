@@ -442,13 +442,16 @@ export default function Dashboard() {
   };
 
   const loadUserData = useCallback(async () => {
-    const [gData, iData] = await Promise.all([apiFetch("/api/gastos"), apiFetch("/api/ingresos")]);
-    setGastos(gData || []);
-    setIngresos(iData || []);
+    const [gDataRaw, iDataRaw] = await Promise.all([apiFetch("/api/gastos"), apiFetch("/api/ingresos")]);
+    const gData = Array.isArray(gDataRaw) ? gDataRaw : [];
+    const iData = Array.isArray(iDataRaw) ? iDataRaw : [];
+    setGastos(gData);
+    setIngresos(iData);
+    return { gData, iData };
   }, []);
 
   const loadAdminData = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAdmin) return { reportData: null };
 
     const [usersData, adminsData, reportData] = await Promise.all([
       apiFetch("/api/admin/usuarios"),
@@ -459,6 +462,7 @@ export default function Dashboard() {
     setAdminUsers(usersData || []);
     setAdmins(adminsData || []);
     setAdminReport(reportData || null);
+    return { reportData: reportData || null };
   }, [isAdmin]);
 
   useEffect(() => {
@@ -489,7 +493,20 @@ export default function Dashboard() {
       try {
         setLoading(true);
         setError("");
-        await Promise.all([loadUserData(), loadAdminData()]);
+        const [userData, adminData] = await Promise.all([loadUserData(), loadAdminData()]);
+
+        const months = [
+          ...(userData?.gData || []).map((row) => monthKey(row.date)),
+          ...(userData?.iData || []).map((row) => monthKey(row.date)),
+          ...(((adminData?.reportData?.movimientos || []).map((item) => monthKey(item.fecha)))),
+        ].filter((value) => /^\d{4}-\d{2}$/.test(value));
+
+        if (months.length > 0) {
+          const latestMonth = Array.from(new Set(months)).sort().at(-1);
+          if (latestMonth) {
+            setSelectedMonth((current) => (months.includes(current) ? current : latestMonth));
+          }
+        }
       } catch (err) {
         setError(err.message);
       } finally {
