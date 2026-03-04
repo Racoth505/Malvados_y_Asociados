@@ -1215,7 +1215,7 @@ export default function Dashboard() {
     ) : (
       <>
         <span className="dot" style={{ background: row.color }} />
-        <span>{row.name}</span>
+        <span className="category-name">{row.name}</span>
         <div className="row-actions">
           <button
             className="btn btn-edit"

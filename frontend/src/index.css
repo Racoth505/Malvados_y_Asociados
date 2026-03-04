@@ -346,6 +346,7 @@ body {
 
 .row-item > div:first-child {
   flex: 1;
+  min-width: 0;
 }
 
 .row-actions {
@@ -408,6 +409,12 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.category-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .dot {
@@ -771,6 +778,7 @@ input[type="color"] {
   margin-left: auto; /* empuja los botones al extremo derecho */
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .password-input {
