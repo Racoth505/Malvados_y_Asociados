@@ -1184,7 +1184,7 @@ export default function Dashboard() {
 
           <article className="card">
             <h3>Categorias actuales</h3>
-            <div className="category-list">
+            <div className={`category-list ${categories.length > 6 ? "category-list-scroll" : ""}`}>
              {categories.map((row) => (
   <div className="category-item" key={row.id}>
     {editingCategoryId === row.id ? (
