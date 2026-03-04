@@ -19,7 +19,7 @@ exports.crear = async (req, res, next) => {
     validarCategoria(categoria, color);
 
     await db.query(
-      `INSERT INTO Gastos
+      `INSERT INTO gastos
        (cantidad, fecha, concepto, categoria, color_categoria, usuario_id)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [cantidad, fecha, concepto, categoria, color, req.user.id]
@@ -45,7 +45,7 @@ exports.listar = async (req, res, next) => {
       categoria AS category,
       color_categoria AS color,
       fecha AS date
-    FROM Gastos
+    FROM gastos
     WHERE usuario_id = ?`;
     const params = [req.user.id];
 
@@ -70,7 +70,7 @@ exports.eliminar = async (req, res, next) => {
     const { id } = req.params;
 
     const [result] = await db.query(
-      'DELETE FROM Gastos WHERE id = ? AND usuario_id = ?',
+      'DELETE FROM gastos WHERE id = ? AND usuario_id = ?',
       [id, req.user.id]
     );
 
@@ -98,7 +98,7 @@ exports.actualizar = async (req, res, next) => {
     validarCategoria(categoria, color);
 
     const [result] = await db.query(
-      `UPDATE Gastos
+      `UPDATE gastos
        SET cantidad = ?,
            fecha = ?,
            concepto = ?,

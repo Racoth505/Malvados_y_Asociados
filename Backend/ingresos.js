@@ -17,7 +17,7 @@ exports.crear = async (req, res, next) => {
     validarConcepto(concepto);
 
     await db.query(
-      `INSERT INTO Ingresos
+      `INSERT INTO ingresos
        (cantidad, fecha, concepto, usuario_id)
        VALUES (?, ?, ?, ?)`,
       [cantidad, fecha, concepto, req.user.id]
@@ -40,7 +40,7 @@ exports.listar = async (req, res, next) => {
          cantidad AS amount,
          concepto AS concept,
          fecha AS date
-       FROM Ingresos
+       FROM ingresos
        WHERE usuario_id = ?`,
       [req.user.id]
     );
@@ -59,7 +59,7 @@ exports.eliminar = async (req, res, next) => {
     const { id } = req.params;
 
     const [result] = await db.query(
-      'DELETE FROM Ingresos WHERE id = ? AND usuario_id = ?',
+      'DELETE FROM ingresos WHERE id = ? AND usuario_id = ?',
       [id, req.user.id]
     );
 
@@ -86,7 +86,7 @@ exports.actualizar = async (req, res, next) => {
     validarConcepto(concepto);
 
     const [result] = await db.query(
-      `UPDATE Ingresos
+      `UPDATE ingresos
        SET cantidad = ?,
            fecha = ?,
            concepto = ?

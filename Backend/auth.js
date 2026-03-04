@@ -11,7 +11,7 @@ exports.register = async (req, res, next) => {
       throw new Error('Campos obligatorios');
 
     const [existe] = await db.query(
-      'SELECT id FROM Usuarios WHERE nombre = ?',
+      'SELECT id FROM usuarios WHERE nombre = ?',
       [nombre]
     );
     if (existe.length) throw new Error('Usuario duplicado');
@@ -19,7 +19,7 @@ exports.register = async (req, res, next) => {
     const hash = await bcrypt.hash(password, 10);
 
     await db.query(
-      'INSERT INTO Usuarios (nombre, password, rol) VALUES (?, ?, ?)',
+      'INSERT INTO usuarios (nombre, password, rol) VALUES (?, ?, ?)',
       [nombre, hash, 'comun']
     );
 
@@ -37,7 +37,7 @@ exports.login = async (req, res, next) => {
       throw new Error('Datos incompletos');
 
     const [users] = await db.query(
-      'SELECT * FROM Usuarios WHERE nombre = ?',
+      'SELECT * FROM usuarios WHERE nombre = ?',
       [nombre]
     );
     if (!users.length) throw new Error('Credenciales inválidas');

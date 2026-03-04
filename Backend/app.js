@@ -19,10 +19,6 @@ const frontendDistPath = path.join(__dirname, "../frontend/dist");
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("API FINSY funcionando");
-});
-
 app.get("/api/divisas/convertir", authMiddleware, divisas.convertir);
 app.get("/api/divisas/populares", authMiddleware, divisas.populares);
 

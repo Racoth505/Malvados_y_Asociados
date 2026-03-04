@@ -1,0 +1,49 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: Finanzas-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_DATABASE: ${DB_NAME:-Finanzas}
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: Finanzas-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_NAME: ${DB_NAME:-Finanzas}
+      JWT_SECRET: ${JWT_SECRET:-CLAVE_SECRETA}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+
+      EXCHANGERATE_BASE_URL: https://v6.exchangerate-api.com/v6
+      EXCHANGERATE_API_KEY: f8c13e466a57bf42b29e55db
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

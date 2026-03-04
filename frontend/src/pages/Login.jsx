@@ -6,9 +6,21 @@ export default function Login() {
   const [nombre, setNombre] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [actionMsg, setActionMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState("login");
   const navigate = useNavigate();
+
+  const showError = (message) => {
+    setError(message);
+    setTimeout(() => setError(""), 3000);
+  };
+
+  const showAction = (message) => {
+    setError("");
+    setActionMsg(message);
+    setTimeout(() => setActionMsg(""), 2000);
+  };
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -22,7 +34,7 @@ export default function Login() {
           body: JSON.stringify({ nombre, password }),
         });
         setMode("login");
-        setError("Usuario creado. Ahora inicia sesion.");
+        showAction("Usuario creado. Ahora inicia sesion.");
         return;
       }
 
@@ -34,8 +46,9 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
       navigate("/dashboard");
+
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     } finally {
       setLoading(false);
     }
@@ -76,6 +89,7 @@ export default function Login() {
             />
           </label>
 
+          {actionMsg && <p className="action-toast">{actionMsg}</p>}
           {error && <p className="form-error">{error}</p>}
 
           <button className="btn btn-primary btn-block" type="submit" disabled={loading}>

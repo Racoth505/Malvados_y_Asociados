@@ -12,7 +12,7 @@ const assertNotSelf = (authUserId, targetId) => {
 
 const getUserById = async (id) => {
   const [rows] = await db.query(
-    'SELECT id, nombre, rol FROM Usuarios WHERE id = ?',
+    'SELECT id, nombre, rol FROM usuarios WHERE id = ?',
     [id]
   );
   return rows[0];
@@ -22,7 +22,7 @@ exports.listarUsuariosComunes = async (req, res, next) => {
   try {
     const [rows] = await db.query(
       `SELECT id, nombre, rol, created_at
-       FROM Usuarios
+       FROM usuarios
        WHERE rol = ?
        ORDER BY created_at DESC`,
       [COMMON_ROLE]
@@ -63,7 +63,7 @@ exports.actualizarUsuarioComun = async (req, res, next) => {
 
     values.push(id);
     await db.query(
-      `UPDATE Usuarios
+      `UPDATE usuarios
        SET ${updates.join(', ')}
        WHERE id = ?`,
       values
@@ -86,9 +86,9 @@ exports.eliminarUsuarioComun = async (req, res, next) => {
     }
 
     await conn.beginTransaction();
-    await conn.query('DELETE FROM Gastos WHERE usuario_id = ?', [id]);
-    await conn.query('DELETE FROM Ingresos WHERE usuario_id = ?', [id]);
-    await conn.query('DELETE FROM Usuarios WHERE id = ?', [id]);
+    await conn.query('DELETE FROM gastos WHERE usuario_id = ?', [id]);
+    await conn.query('DELETE FROM ingresos WHERE usuario_id = ?', [id]);
+    await conn.query('DELETE FROM usuarios WHERE id = ?', [id]);
     await conn.commit();
 
     res.json({ message: 'Usuario comun eliminado' });
@@ -109,7 +109,7 @@ exports.crearAdmin = async (req, res, next) => {
     }
 
     const [exists] = await db.query(
-      'SELECT id FROM Usuarios WHERE nombre = ?',
+      'SELECT id FROM usuarios WHERE nombre = ?',
       [nombre]
     );
     if (exists.length) {
@@ -118,7 +118,7 @@ exports.crearAdmin = async (req, res, next) => {
 
     const hash = await bcrypt.hash(password, 10);
     await db.query(
-      'INSERT INTO Usuarios (nombre, password, rol) VALUES (?, ?, ?)',
+      'INSERT INTO usuarios (nombre, password, rol) VALUES (?, ?, ?)',
       [nombre, hash, ADMIN_ROLE]
     );
 
@@ -132,7 +132,7 @@ exports.listarAdmins = async (req, res, next) => {
   try {
     const [rows] = await db.query(
       `SELECT id, nombre, rol, created_at
-       FROM Usuarios
+       FROM usuarios
        WHERE rol = ?
        ORDER BY created_at DESC`,
       [ADMIN_ROLE]
@@ -175,7 +175,7 @@ exports.actualizarAdmin = async (req, res, next) => {
 
     values.push(id);
     await db.query(
-      `UPDATE Usuarios
+      `UPDATE usuarios
        SET ${updates.join(', ')}
        WHERE id = ?`,
       values
@@ -197,7 +197,7 @@ exports.eliminarAdmin = async (req, res, next) => {
       return res.status(404).json({ error: 'Administrador no encontrado' });
     }
 
-    await db.query('DELETE FROM Usuarios WHERE id = ?', [id]);
+    await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
     res.json({ message: 'Administrador eliminado' });
   } catch (err) {
     next(err);
@@ -209,16 +209,16 @@ exports.reporteGeneral = async (req, res, next) => {
     const [resumenRows] = await db.query(
       `SELECT
          COALESCE((SELECT SUM(i.cantidad)
-                   FROM Ingresos i
-                   INNER JOIN Usuarios u ON u.id = i.usuario_id), 0) AS total_ingresos,
+                   FROM ingresos i
+                   INNER JOIN usuarios u ON u.id = i.usuario_id), 0) AS total_ingresos,
          COALESCE((SELECT SUM(g.cantidad)
-                   FROM Gastos g
-                   INNER JOIN Usuarios u ON u.id = g.usuario_id), 0) AS total_gastos,
+                   FROM gastos g
+                   INNER JOIN usuarios u ON u.id = g.usuario_id), 0) AS total_gastos,
          (SELECT COUNT(*)
-          FROM Usuarios u
+          FROM usuarios u
           WHERE u.rol = ?) AS numero_usuarios_comunes,
          (SELECT COUNT(*)
-          FROM Usuarios u
+          FROM usuarios u
           WHERE u.rol = ?) AS numero_administradores`,
       [COMMON_ROLE, ADMIN_ROLE]
     );
@@ -235,8 +235,8 @@ exports.reporteGeneral = async (req, res, next) => {
          NULL AS categoria,
          NULL AS color_categoria,
          i.fecha
-       FROM Ingresos i
-       INNER JOIN Usuarios u ON u.id = i.usuario_id
+       FROM ingresos i
+       INNER JOIN usuarios u ON u.id = i.usuario_id
        UNION ALL
        SELECT
          'gasto' AS tipo,
@@ -249,8 +249,8 @@ exports.reporteGeneral = async (req, res, next) => {
          g.categoria,
          g.color_categoria,
          g.fecha
-       FROM Gastos g
-       INNER JOIN Usuarios u ON u.id = g.usuario_id
+       FROM gastos g
+       INNER JOIN usuarios u ON u.id = g.usuario_id
        ORDER BY fecha DESC, movimiento_id DESC`
     );
 

@@ -440,6 +440,11 @@ export default function Dashboard() {
     window.setTimeout(() => setActionMsg(""), 2000);
   };
 
+  const showError = (message) => {
+    setError(message);
+    window.setTimeout(() => setError(""), 3000);
+  };
+
   const loadUserData = useCallback(async () => {
     const [gDataRaw, iDataRaw] = await Promise.all([apiFetch("/api/gastos"), apiFetch("/api/ingresos")]);
     const gData = Array.isArray(gDataRaw) ? gDataRaw : [];
@@ -482,7 +487,7 @@ export default function Dashboard() {
     const boot = async () => {
       try {
         setLoading(true);
-        setError("");
+        showError("");
         const [userData, adminData] = await Promise.all([
           loadUserData(),
           loadAdminData(),
@@ -502,7 +507,7 @@ export default function Dashboard() {
           }
         }
       } catch (err) {
-        setError(err.message);
+        showError(err.message);
       } finally {
         setLoading(false);
       }
@@ -525,7 +530,7 @@ export default function Dashboard() {
         setCurrencyRate(Number(data?.rate || 1));
       } catch (err) {
         setCurrencyRate(1);
-        setError(err.message);
+        showError(err.message);
       }
     };
 
@@ -561,17 +566,17 @@ export default function Dashboard() {
     event.preventDefault();
     try {
       const name = newCategory.name.trim();
-      if (name.length < 3) return setError("La categoria debe tener al menos 3 caracteres");
+      if (name.length < 3) return showError("La categoria debe tener al menos 3 caracteres");
       await apiFetch("/api/categorias", {
         method: "POST",
         body: JSON.stringify({ nombre: name, color: newCategory.color }),
       });
       setNewCategory({ name: "", color: "#3b82f6" });
       await loadCategories();
-      setError("");
+      showError("");
       showAction("Categoria agregada");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -581,7 +586,7 @@ export default function Dashboard() {
       await loadCategories();
       showAction("Categoria eliminada");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -589,7 +594,7 @@ export default function Dashboard() {
     try {
       if (!editingCategoryId) return;
       const name = editCategory.name.trim();
-      if (name.length < 3) return setError("La categoria debe tener al menos 3 caracteres");
+      if (name.length < 3) return showError("La categoria debe tener al menos 3 caracteres");
       await apiFetch(`/api/categorias/${editingCategoryId}`, {
         method: "PUT",
         body: JSON.stringify({
@@ -602,7 +607,7 @@ export default function Dashboard() {
       await Promise.all([loadCategories(), loadUserData()]);
       showAction("Categoria actualizada");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -620,9 +625,9 @@ export default function Dashboard() {
       setNewIngreso({ cantidad: "", concepto: "", fecha: today() });
       await loadUserData();
       showAction("Ingreso agregado");
-      setError("");
+      showError("");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -642,9 +647,9 @@ export default function Dashboard() {
       setNewGasto((prev) => ({ ...prev, cantidad: "", concepto: "", fecha: today() }));
       await loadUserData();
       showAction("Gasto agregado");
-      setError("");
+      showError("");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -654,7 +659,7 @@ export default function Dashboard() {
       await loadUserData();
       showAction("Ingreso eliminado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -664,7 +669,7 @@ export default function Dashboard() {
       await loadUserData();
       showAction("Gasto eliminado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -702,7 +707,7 @@ export default function Dashboard() {
       await loadUserData();
       showAction("Ingreso actualizado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -722,7 +727,7 @@ export default function Dashboard() {
       await loadUserData();
       showAction("Gasto actualizado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -737,7 +742,7 @@ export default function Dashboard() {
       await loadAdminData();
       showAction("Administrador creado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -747,7 +752,7 @@ export default function Dashboard() {
       await loadAdminData();
       showAction("Usuario eliminado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
@@ -757,14 +762,14 @@ export default function Dashboard() {
       await loadAdminData();
       showAction("Administrador eliminado");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
   const updateCommonUser = async (id) => {
     try {
       if (!editingUserPassword) {
-        setError("Debe ingresar una contraseña");
+        showError("Debe ingresar una contraseña");
         return;
       }
       await apiFetch(`/api/admin/usuarios/${id}`, {
@@ -776,14 +781,14 @@ export default function Dashboard() {
       await loadAdminData();
       showAction("Contraseña actualizada");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 
   const updateAdmin = async (id) => {
     try {
       if (!editingAdminPassword) {
-        setError("Debe ingresar una contraseña");
+        showError("Debe ingresar una contraseña");
         return;
       }
       await apiFetch(`/api/admin/admins/${id}`, {
@@ -795,7 +800,7 @@ export default function Dashboard() {
       await loadAdminData();
       showAction("Contraseña actualizada");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     }
   };
 

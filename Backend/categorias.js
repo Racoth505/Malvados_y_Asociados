@@ -26,7 +26,7 @@ const validateColor = (color) => {
 
 const ensureDefaultCategories = async (userId) => {
   const [countRows] = await db.query(
-    "SELECT COUNT(*) AS total FROM Categorias WHERE usuario_id = ?",
+    "SELECT COUNT(*) AS total FROM categorias WHERE usuario_id = ?",
     [userId]
   );
 
@@ -40,7 +40,7 @@ const ensureDefaultCategories = async (userId) => {
   });
 
   await db.query(
-    `INSERT INTO Categorias (nombre, color, usuario_id) VALUES ${valuesSql}`,
+    `INSERT INTO categorias (nombre, color, usuario_id) VALUES ${valuesSql}`,
     params
   );
 };
@@ -50,7 +50,7 @@ exports.listar = async (req, res, next) => {
     await ensureDefaultCategories(req.user.id);
     const [rows] = await db.query(
       `SELECT id, nombre AS name, color, created_at
-       FROM Categorias
+       FROM categorias
        WHERE usuario_id = ?
        ORDER BY created_at ASC, id ASC`,
       [req.user.id]
@@ -70,7 +70,7 @@ exports.crear = async (req, res, next) => {
     validateColor(color);
 
     const [result] = await db.query(
-      `INSERT INTO Categorias (nombre, color, usuario_id)
+      `INSERT INTO categorias (nombre, color, usuario_id)
        VALUES (?, ?, ?)`,
       [name, color, req.user.id]
     );
@@ -96,7 +96,7 @@ exports.actualizar = async (req, res, next) => {
 
     const [rows] = await conn.query(
       `SELECT id, nombre, color
-       FROM Categorias
+       FROM categorias
        WHERE id = ? AND usuario_id = ?`,
       [id, req.user.id]
     );
@@ -109,14 +109,14 @@ exports.actualizar = async (req, res, next) => {
 
     await conn.beginTransaction();
     await conn.query(
-      `UPDATE Categorias
+      `UPDATE categorias
        SET nombre = ?, color = ?
        WHERE id = ? AND usuario_id = ?`,
       [name, color, id, req.user.id]
     );
 
     await conn.query(
-      `UPDATE Gastos
+      `UPDATE gastos
        SET categoria = ?, color_categoria = ?
        WHERE usuario_id = ? AND categoria = ?`,
       [name, color, req.user.id, previous.nombre]
@@ -141,7 +141,7 @@ exports.eliminar = async (req, res, next) => {
 
     const [rows] = await db.query(
       `SELECT nombre
-       FROM Categorias
+       FROM categorias
        WHERE id = ? AND usuario_id = ?`,
       [id, req.user.id]
     );
@@ -153,7 +153,7 @@ exports.eliminar = async (req, res, next) => {
     const name = rows[0].nombre;
     const [usage] = await db.query(
       `SELECT COUNT(*) AS total
-       FROM Gastos
+       FROM gastos
        WHERE usuario_id = ? AND categoria = ?`,
       [req.user.id, name]
     );
@@ -165,7 +165,7 @@ exports.eliminar = async (req, res, next) => {
     }
 
     await db.query(
-      "DELETE FROM Categorias WHERE id = ? AND usuario_id = ?",
+      "DELETE FROM categorias WHERE id = ? AND usuario_id = ?",
       [id, req.user.id]
     );
 
