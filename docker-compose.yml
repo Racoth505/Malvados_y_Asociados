@@ -27,10 +27,10 @@ services:
     container_name: Finanzas-app
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-3003}:3003"
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 3003
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: ${DB_USER:-root}
